@@ -1,0 +1,11 @@
+# clipy
+local/
+
+# Python
+.python/
+.coverage
+.python-version
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
