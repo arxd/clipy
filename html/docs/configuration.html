@@ -1,0 +1,149 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration &mdash; cfg.name cfg.version documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7ffbfd5f"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cli.py" href="code_layout.html" />
+    <link rel="prev" title="TODO" href="todo.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../README.html" class="icon icon-home">
+            cfg.name
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environment.html">Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">TODO</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#targets">Targets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#secrets">Secrets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#variables">Variables</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="code_layout.html">cli.py</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../README.html">cfg.name</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../README.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/docs/configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration">
+<span id="page-config"></span><h1>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#targets" id="id1">Targets</a></p></li>
+<li><p><a class="reference internal" href="#secrets" id="id2">Secrets</a></p></li>
+<li><p><a class="reference internal" href="#variables" id="id3">Variables</a></p></li>
+</ul>
+</nav>
+<section id="targets">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Targets</a><a class="headerlink" href="#targets" title="Link to this heading"></a></h2>
+<p>Configuration values are grouped into <strong>targets</strong>.  A target is a function that sets some configuration
+values.  Targets are defined with the <code class="docutils literal notranslate"><span class="pre">&#64;Config.target</span></code> annotation.  There are three locations where targets
+can be defined:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">config.py</span></code>  This is for deployment agnostic targets like <code class="docutils literal notranslate"><span class="pre">local</span></code> and <code class="docutils literal notranslate"><span class="pre">test</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">local/config.py</span></code>  This is for defining custom targets that can be used for testing/debugging but won’t be pushed to git.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vault/config.py</span></code>  Targets in here are only relevant for deployments like <code class="docutils literal notranslate"><span class="pre">prod</span></code> and <code class="docutils literal notranslate"><span class="pre">client</span></code></p></li>
+</ul>
+<p>Targets can be chained <code class="docutils literal notranslate"><span class="pre">local.sub1</span></code>, <code class="docutils literal notranslate"><span class="pre">local.sub1.sub2</span></code>.
+The target functions are just called in order so subsequent targets can override variables from the parents.</p>
+<p>Set the target with <code class="docutils literal notranslate"><span class="pre">-t</span></code> when calling <code class="xref any docutils literal notranslate"><span class="pre">cli</span></code>.</p>
+</section>
+<section id="secrets">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Secrets</a><a class="headerlink" href="#secrets" title="Link to this heading"></a></h2>
+<p>No secret (passwords, keys) should be stored in configuration variables.  They should be stored in files (in the vault)
+and the file path should be given in a configuration variable.  One text file for each variable.  Don’t put them
+all together in one json file.</p>
+<p><code class="docutils literal notranslate"><span class="pre">vault/config.py</span></code> is not really a secret.  It just isn’t generically applicable to the application.  Semi-secret.</p>
+</section>
+<section id="variables">
+<h2><a class="toc-backref" href="#id3" role="doc-backlink">Variables</a><a class="headerlink" href="#variables" title="Link to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="todo.html" class="btn btn-neutral float-left" title="TODO" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="code_layout.html" class="btn btn-neutral float-right" title="cli.py" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

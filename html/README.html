@@ -1,0 +1,186 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cli.py &mdash; cfg.name cfg.version documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="shortcut icon" href="_static/favicon.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7ffbfd5f"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Commands" href="docs/commands.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            cfg.name
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="docs/commands.html">Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/environment.html">Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/todo.html">TODO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/code_layout.html">cli.py</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">cfg.name</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">cli.py</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/README.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="cli-py">
+<h1>cli.py<a class="headerlink" href="#cli-py" title="Link to this heading"></a></h1>
+<p>This project serves two primary purposes.</p>
+<ol class="arabic">
+<li><p>A universal command line interface for any project.</p>
+<ul class="simple">
+<li><dl class="simple">
+<dt>Sub-commands are known deterministically.</dt><dd><ul>
+<li><p>They are parsed before any commands are executed.</p></li>
+<li><p>They may be lazy-loaded for efficiency.</p></li>
+<li><p>They may be dynamically loaded to ensure needed packages (or other dependencies) are installed.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>Easy-to-read documentation automatically generated from the docstring with <code class="docutils literal notranslate"><span class="pre">-h</span></code> or <code class="docutils literal notranslate"><span class="pre">--help</span></code>.</p></li>
+<li><p>The function’s annotations and default values are used to coerce the command line arguments to the correct type.</p></li>
+<li><p>A consistent way to call all kinds of function signatures (using <code class="docutils literal notranslate"><span class="pre">inspect.signature</span></code> to the fullest extent).</p></li>
+<li><p>Generators, async, and async generators are all supported.</p></li>
+<li><p>The ability to accept multiple list-typed parameters.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">*args</span></code> and <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> have useful abilities.</p></li>
+</ul>
+<p><a class="reference internal" href="docs/commands.html#page-commands"><span class="std std-ref">Commands</span></a></p>
+</li>
+<li><p>An inline-library of useful functions for scripting and tooling.</p>
+<ul class="simple">
+<li><p>environment setup:  Making sure you have the right python version, venv, pip packages needed.</p></li>
+<li><p>configuration:  Per-target (local, staging, production) configuration variables.</p></li>
+<li><p>printing/logging:  Combining these two ideas and adding console-specific pretty printing.</p></li>
+<li><p>system commands:  Working with other command-line-tools such as nginx, grep, aws, docker, etc.</p></li>
+<li><p>documentation:  Coordinating sphinx-based documentation generation.</p></li>
+<li><p>vault:  Keeping secrets in the project secret.</p></li>
+</ul>
+</li>
+</ol>
+<p>A project is a meta-program that may produce other programs, or even produce a whole network of connected services.
+The meta-program is a single command-line-interface (CLI).
+Everything the project is capable of doing is managed/orchestrated through this sole CLI.</p>
+<p>This project is a project based on the cli.py concept, so it is a good demonstration of itself.</p>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h2>
+<p>Run <code class="docutils literal notranslate"><span class="pre">./cli.py</span> <span class="pre">-h</span></code> to see what this project can do.
+Run <code class="docutils literal notranslate"><span class="pre">./cli.py</span> <span class="pre">docs</span></code> and read all the documentation in the browser.</p>
+<p>Create a new project.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>Create<span class="w"> </span>a<span class="w"> </span>new<span class="w"> </span>project
+<span class="gp">$ </span>./cli.py<span class="w"> </span>create<span class="w"> </span>my_project
+
+<span class="gp"># </span>Add<span class="w"> </span>features
+<span class="gp">$ </span>./cli.py<span class="w"> </span>add<span class="w"> </span>my_project<span class="w"> </span>--docs<span class="w"> </span>--vault<span class="w"> </span>--docker
+
+<span class="gp"># </span>List<span class="w"> </span>all<span class="w"> </span>features
+<span class="gp">$ </span>./cli.py<span class="w"> </span>add<span class="w"> </span>-h
+</pre></div>
+</div>
+</section>
+<section id="rational">
+<h2>Rational<a class="headerlink" href="#rational" title="Link to this heading"></a></h2>
+<p>There are lots of CLI script front-end programs like <code class="docutils literal notranslate"><span class="pre">make</span></code>, <code class="docutils literal notranslate"><span class="pre">npm/yarn</span></code>, <code class="docutils literal notranslate"><span class="pre">uv</span></code>, etc. that can run custom scripts/tools that help your project function.  Each framework/language has their own pet program.</p>
+<p>They all are inadequate for mostly the same reason.  They are an opaque library/binary that tries to be as universal as possible while simultaneously not providing an adequate API.  So they do more, and less than you want, and you can’t change the implementation.</p>
+<p>This, on the other hand, is not an external library.  It lies somewhere between boilerplate code and library code.
+This project bootstraps new projects by copying in boilerplate and library clipy code.
+That code is then owned, and can be freely edited/adapted, by the new project.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="docs/commands.html">Commands</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/environment.html">Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/todo.html">TODO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/code_layout.html">cli.py</a></li>
+</ul>
+</div>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="docs/commands.html" class="btn btn-neutral float-right" title="Commands" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

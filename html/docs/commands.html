@@ -1,0 +1,613 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commands &mdash; cfg.name cfg.version documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=7ffbfd5f"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Environment" href="environment.html" />
+    <link rel="prev" title="cli.py" href="../README.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../README.html" class="icon icon-home">
+            cfg.name
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Commands</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#basic-example">Basic Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#positional-vs-keyword">Positional vs. Keyword</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#positional">Positional</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#keyword">Keyword</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#types">Types</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#bool">Bool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#numbers">Numbers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lists">Lists</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tuple">Tuple</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#sub-commands">Sub-Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#explicit-sub-command-control">Explicit Sub-command Control</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#implicit-sub-command-control">Implicit Sub-command Control</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#generators">Generators</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#variable-args">Variable Args</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#args">*args</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#kwargs">**kwargs</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#edge-cases-quirks">Edge Cases / Quirks</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#backslash-escape">Backslash Escape</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#hidden-parameters">Hidden Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#trailing-underscore">Trailing Underscore</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#skip-argument">Skip Argument</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#class-documentation">Class Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#libclipy.core.command.dfn.CommandDfn"><code class="docutils literal notranslate"><span class="pre">CommandDfn</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libclipy.core.command.command.Command"><code class="docutils literal notranslate"><span class="pre">Command</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#libclipy.core.command.dfn.CLI"><code class="docutils literal notranslate"><span class="pre">CLI</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="environment.html">Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="todo.html">TODO</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_layout.html">cli.py</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../README.html">cfg.name</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../README.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Commands</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/docs/commands.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="commands">
+<span id="page-commands"></span><h1>Commands<a class="headerlink" href="#commands" title="Link to this heading"></a></h1>
+<nav class="contents local" id="contents">
+<ul class="simple">
+<li><p><a class="reference internal" href="#basic-example" id="id1">Basic Example</a></p></li>
+<li><p><a class="reference internal" href="#positional-vs-keyword" id="id2">Positional vs. Keyword</a></p>
+<ul>
+<li><p><a class="reference internal" href="#positional" id="id3">Positional</a></p></li>
+<li><p><a class="reference internal" href="#keyword" id="id4">Keyword</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#types" id="id5">Types</a></p>
+<ul>
+<li><p><a class="reference internal" href="#bool" id="id6">Bool</a></p></li>
+<li><p><a class="reference internal" href="#numbers" id="id7">Numbers</a></p></li>
+<li><p><a class="reference internal" href="#lists" id="id8">Lists</a></p></li>
+<li><p><a class="reference internal" href="#tuple" id="id9">Tuple</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#sub-commands" id="id10">Sub-Commands</a></p>
+<ul>
+<li><p><a class="reference internal" href="#explicit-sub-command-control" id="id11">Explicit Sub-command Control</a></p></li>
+<li><p><a class="reference internal" href="#implicit-sub-command-control" id="id12">Implicit Sub-command Control</a></p></li>
+<li><p><a class="reference internal" href="#generators" id="id13">Generators</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#variable-args" id="id14">Variable Args</a></p>
+<ul>
+<li><p><a class="reference internal" href="#args" id="id15">*args</a></p></li>
+<li><p><a class="reference internal" href="#kwargs" id="id16">**kwargs</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#edge-cases-quirks" id="id17">Edge Cases / Quirks</a></p>
+<ul>
+<li><p><a class="reference internal" href="#backslash-escape" id="id18">Backslash Escape</a></p></li>
+<li><p><a class="reference internal" href="#hidden-parameters" id="id19">Hidden Parameters</a></p></li>
+<li><p><a class="reference internal" href="#trailing-underscore" id="id20">Trailing Underscore</a></p></li>
+<li><p><a class="reference internal" href="#skip-argument" id="id21">Skip Argument</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#class-documentation" id="id22">Class Documentation</a></p></li>
+</ul>
+</nav>
+<p>The command line interface follows this generic pattern:</p>
+<blockquote>
+<div><p>[command &lt;positional_argument&gt;* &lt;keyword_argument&gt;*]+</p>
+</div></blockquote>
+<p>A command is defined by a Python function decorated with <a class="reference internal" href="#libclipy.core.command.dfn.CLI" title="libclipy.core.command.dfn.CLI"><code class="xref any py py-class docutils literal notranslate"><span class="pre">&#64;CLI</span></code></a>.
+The function’s parameters and the associated docstring fully define the command’s interface and documentation.</p>
+<section id="basic-example">
+<h2><a class="toc-backref" href="#id1" role="doc-backlink">Basic Example</a><a class="headerlink" href="#basic-example" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">hello</span><span class="p">(</span><span class="n">say</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">times__t</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39; Say something multiple times</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        &lt;message&gt;, --say &lt;message&gt;</span>
+<span class="sd">            What you want to say</span>
+<span class="sd">        --times &lt;int&gt;, -t &lt;int&gt;</span>
+<span class="sd">            How many times you want to say it.</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">say</span><span class="p">]</span> <span class="o">*</span> <span class="n">times__t</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>hello<span class="w"> </span>-h
+<span class="go">&lt;hello.__doc__&gt;</span>
+</pre></div>
+</div>
+<p>Using <code class="docutils literal notranslate"><span class="pre">-h</span></code> or <code class="docutils literal notranslate"><span class="pre">--help</span></code> will show the docstring documentation.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>hello<span class="w"> </span>-t<span class="w"> </span><span class="m">3</span><span class="w"> </span>--say<span class="w"> </span>Ho
+<span class="go">Ho Ho Ho</span>
+</pre></div>
+</div>
+<p>If the value returned from a command is not <code class="docutils literal notranslate"><span class="pre">None</span></code>, then it is pretty-printed.
+You may use a single dash for single character names, otherwise use double-dashes.
+Names defined with double underscores separate the aliases that can be used on the command line (<code class="docutils literal notranslate"><span class="pre">--times</span></code> or <code class="docutils literal notranslate"><span class="pre">-t</span></code>).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">say</span></code> parameter has no type information so it will be a string.
+The <code class="docutils literal notranslate"><span class="pre">times__t</span></code> parameter’s default value is an int, so you can only pass integers.  <code class="docutils literal notranslate"><span class="pre">-t</span> <span class="pre">hi</span></code> will fail with an error.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span><span class="s2">&quot;Hello World&quot;</span><span class="w"> </span>-t<span class="o">=</span><span class="m">2</span>
+<span class="go">Hello World Hello World</span>
+</pre></div>
+</div>
+<p>Since the parameter <code class="docutils literal notranslate"><span class="pre">say</span></code> is defined as a keyword <em>or</em> positional, you can pass it positionally, as well.
+But <code class="docutils literal notranslate"><span class="pre">times__t</span></code> is keyword only so it cannot be given positionally.</p>
+</section>
+<section id="positional-vs-keyword">
+<h2><a class="toc-backref" href="#id2" role="doc-backlink">Positional vs. Keyword</a><a class="headerlink" href="#positional-vs-keyword" title="Link to this heading"></a></h2>
+<p>Positional parameters always precede keyword arguments (with the exception of <code class="docutils literal notranslate"><span class="pre">*args</span></code> as described later).</p>
+<p>First, command line arguments are taken one by one until a dash argument (that might be a keyword) is encountered which indicates the start of keyword arguments.  Note that negative numbers don’t look like a keyword, so they are accepted as-is.</p>
+<p>Next, keyword arguments are taken until a non-keyword (indicating the start of the next command), or <code class="docutils literal notranslate"><span class="pre">--</span></code> is encountered.</p>
+<section id="positional">
+<h3><a class="toc-backref" href="#id3" role="doc-backlink">Positional</a><a class="headerlink" href="#positional" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="n">banana__b</span><span class="o">=</span><span class="s1">&#39;hi&#39;</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">carrot__c</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&#39;&#39;&#39; Foo</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        &lt;int&gt;</span>
+<span class="sd">            Positional only</span>
+<span class="sd">        &lt;str&gt;, --banana &lt;str&gt;, -b &lt;str&gt;</span>
+<span class="sd">            Positional or keyword</span>
+<span class="sd">        --carrot &lt;int&gt;, -c &lt;int&gt;</span>
+<span class="sd">            Keyword only</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a=</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">  banana=</span><span class="si">{</span><span class="n">banana__b</span><span class="si">}</span><span class="s2">  carrot=</span><span class="si">{</span><span class="n">carrot__c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="m">4</span><span class="w"> </span>bye<span class="w"> </span>--carrot<span class="w"> </span><span class="m">42</span>
+<span class="go">a=4  banana=&#39;bye&#39;  carrot=42</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="m">4</span><span class="w"> </span>-c<span class="w"> </span><span class="m">42</span><span class="w"> </span>-b<span class="w"> </span>bye
+<span class="go">a=4  banana=&#39;bye&#39;  carrot=42</span>
+</pre></div>
+</div>
+<p>The distinction between positional-only, positional or keyword and keyword-only parameters is important.
+Parameters before the <code class="docutils literal notranslate"><span class="pre">/</span></code> cannot be specified by name.  Parameters after the <code class="docutils literal notranslate"><span class="pre">*</span></code> <em>must</em> be given by name.
+Other parameters may be given either way.</p>
+<p>Notice how the docstring indicates which parameters may be given positionally.</p>
+</section>
+<section id="keyword">
+<h3><a class="toc-backref" href="#id4" role="doc-backlink">Keyword</a><a class="headerlink" href="#keyword" title="Link to this heading"></a></h3>
+<p>Keyword parameters are given with the name (<code class="docutils literal notranslate"><span class="pre">-x</span></code>, <code class="docutils literal notranslate"><span class="pre">--bob</span></code>, <code class="docutils literal notranslate"><span class="pre">--etc</span></code>) followed by the value.
+The value may follow the name after a space (<code class="docutils literal notranslate"><span class="pre">-x</span> <span class="pre">3</span></code>), or be joined with an equals (<code class="docutils literal notranslate"><span class="pre">-x=3</span></code>).</p>
+<p>Multi-letter names must use two dashes, and underscores are turned into dashes, so <code class="docutils literal notranslate"><span class="pre">a_long_name</span></code> becomes <code class="docutils literal notranslate"><span class="pre">--a-long-name</span></code>.
+Single-letter names may use a single dash.</p>
+<p>Double underscores separate name aliases, which is mostly used to give a short single-letter name along with the long name, <code class="docutils literal notranslate"><span class="pre">name__n</span></code>.
+However, multiple aliases may be given. <code class="docutils literal notranslate"><span class="pre">super_long__medium__s__z</span></code>  would allow <code class="docutils literal notranslate"><span class="pre">--super-long</span></code>, <code class="docutils literal notranslate"><span class="pre">--medium</span></code>, <code class="docutils literal notranslate"><span class="pre">-s</span></code> and <code class="docutils literal notranslate"><span class="pre">-z</span></code>.</p>
+</section>
+</section>
+<section id="types">
+<h2><a class="toc-backref" href="#id5" role="doc-backlink">Types</a><a class="headerlink" href="#types" title="Link to this heading"></a></h2>
+<p>All parameters have a type which is determined by its annotation or default value.
+If unknown, <code class="docutils literal notranslate"><span class="pre">str</span></code> is assumed.</p>
+<section id="bool">
+<span id="bool-type"></span><h3><a class="toc-backref" href="#id6" role="doc-backlink">Bool</a><a class="headerlink" href="#bool" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">verbose__v</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">times__t</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;v=</span><span class="si">{</span><span class="n">verbose__v</span><span class="si">}</span><span class="s2">  t=</span><span class="si">{</span><span class="n">times__t</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-vt<span class="w"> </span><span class="m">100</span>
+<span class="go">v=True  t=100</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-vvv
+<span class="go">v=3  t=None</span>
+</pre></div>
+</div>
+<p>Flags are parameters of type <code class="docutils literal notranslate"><span class="pre">bool</span></code>.</p>
+<p>Flags may be specified multiple times in which case the value won’t be <code class="docutils literal notranslate"><span class="pre">True</span></code>, but an integer specifying how many times it was given.
+Since <code class="docutils literal notranslate"><span class="pre">int(True)</span> <span class="pre">==</span> <span class="pre">1</span></code> you can use <code class="docutils literal notranslate"><span class="pre">int(verbose__v)</span></code> to get the number of times it was specified.</p>
+<p>Flags may be joined with other single-letter names in the usual way. <code class="docutils literal notranslate"><span class="pre">-vvt</span> <span class="pre">x</span></code> is equivalent to <code class="docutils literal notranslate"><span class="pre">-v</span> <span class="pre">-v</span> <span class="pre">-t</span> <span class="pre">x</span></code>.
+The last letter of the group may be a non-flag type, but the others <em>must</em> be <code class="docutils literal notranslate"><span class="pre">bool</span></code> typed.</p>
+<p>Without a value, <code class="docutils literal notranslate"><span class="pre">True</span></code> is assumed, but you can specify the value in common (case-insensitive) ways:  <code class="docutils literal notranslate"><span class="pre">true/false</span></code>, <code class="docutils literal notranslate"><span class="pre">t/f</span></code>, <code class="docutils literal notranslate"><span class="pre">yes/no</span></code>, <code class="docutils literal notranslate"><span class="pre">y/n</span></code>, <code class="docutils literal notranslate"><span class="pre">on/off</span></code>, <code class="docutils literal notranslate"><span class="pre">1/0</span></code>.</p>
+</section>
+<section id="numbers">
+<h3><a class="toc-backref" href="#id7" role="doc-backlink">Numbers</a><a class="headerlink" href="#numbers" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">int</span></code> and <code class="docutils literal notranslate"><span class="pre">float</span></code></p>
+<p>Integers can be specified in various bases.</p>
+<ul class="simple">
+<li><p>base 2:  <code class="docutils literal notranslate"><span class="pre">0b1101</span></code></p></li>
+<li><p>base 8:  <code class="docutils literal notranslate"><span class="pre">0755</span></code></p></li>
+<li><p>base 10: <code class="docutils literal notranslate"><span class="pre">-53</span></code></p></li>
+<li><p>base 16: <code class="docutils literal notranslate"><span class="pre">0xff</span></code></p></li>
+</ul>
+<p>Note that negative numbers can be used normally.  They won’t be treated as keyword names.</p>
+</section>
+<section id="lists">
+<span id="list-type"></span><h3><a class="toc-backref" href="#id8" role="doc-backlink">Lists</a><a class="headerlink" href="#lists" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">a</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">c</span><span class="o">=</span><span class="p">[]):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a=</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">  b=</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">  c=</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Since the element type of the third list is unspecified, <code class="docutils literal notranslate"><span class="pre">str</span></code> is assumed.</p>
+<p>Arguments are taken and added to the list until a keyword argument is encountered, or a single <code class="docutils literal notranslate"><span class="pre">-</span></code>.
+For keyword parameters you can optionally repeat the name <code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">66</span> <span class="pre">-c</span> <span class="pre">apples</span></code>.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">1</span>.1<span class="w"> </span>-.1<span class="w"> </span>1e3<span class="w"> </span>-<span class="w"> </span><span class="m">66</span><span class="w"> </span>apples
+<span class="go">a=3  b=[1.1, -0.1, 1000.0]  c=[&#39;66&#39;, &#39;apples&#39;]</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-c<span class="w"> </span><span class="m">66</span><span class="w"> </span>-c<span class="w"> </span>apples<span class="w"> </span>-b<span class="w"> </span><span class="m">1</span>.1<span class="w"> </span>-0.1<span class="w"> </span>1e3<span class="w"> </span>-<span class="w"> </span>-a<span class="w"> </span><span class="m">3</span>
+<span class="go">a=3  b=[1.1, -0.1, 1000.0]  c=[&#39;66&#39;, &#39;apples&#39;]</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="m">3</span><span class="w"> </span><span class="m">1</span>.1<span class="w"> </span>-<span class="w"> </span>-c<span class="w"> </span><span class="m">66</span><span class="w"> </span>apples<span class="w"> </span>-<span class="w"> </span>-b<span class="w"> </span>-0.1<span class="w"> </span>1e3
+<span class="go">a=3  b=[1.1, -0.1, 1000.0]  c=[&#39;66&#39;, &#39;apples&#39;]</span>
+</pre></div>
+</div>
+</section>
+<section id="tuple">
+<h3><a class="toc-backref" href="#id9" role="doc-backlink">Tuple</a><a class="headerlink" href="#tuple" title="Link to this heading"></a></h3>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">a</span><span class="p">:</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span><span class="nb">str</span><span class="p">],</span> <span class="n">b</span><span class="o">=</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">)):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a=</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">  b=</span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">  c=</span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="m">1</span>,hi<span class="w"> </span>a,b,c<span class="w"> </span><span class="m">4</span>,5,6
+<span class="go">a=(1, &#39;hi&#39;)  b=(&#39;a&#39;, &#39;b&#39;, &#39;c&#39;)  c=(4, 5, 6)</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-b<span class="w"> </span>x<span class="w"> </span>-a<span class="o">=</span><span class="s2">&quot;1, space&quot;</span>
+<span class="go">a=(1, &#39; space&#39;)  b=(&#39;x&#39;, )  c=(1, 2, 3)</span>
+</pre></div>
+</div>
+<p>Tuples are given as a comma-separated set of values.
+The number of values is determined by the type.
+If the tuple type specifies a single element type (e.g., <code class="docutils literal notranslate"><span class="pre">tuple[bool]</span></code>), then any number of values of that type may be given.</p>
+</section>
+</section>
+<section id="sub-commands">
+<h2><a class="toc-backref" href="#id10" role="doc-backlink">Sub-Commands</a><a class="headerlink" href="#sub-commands" title="Link to this heading"></a></h2>
+<p>A command may have sub-commands.
+Sub-commands must be discoverable before execution starts, so they are given to the <a class="reference internal" href="#libclipy.core.command.dfn.CLI" title="libclipy.core.command.dfn.CLI"><code class="xref any py py-class docutils literal notranslate"><span class="pre">&#64;CLI</span></code></a> decorator.</p>
+<p>The complete chain of commands is fully parsed before any commands are actually executed.
+By making the sub-command lookup deterministic we can provide better help and documentation support.
+Also, any command-line syntax errors in sub-commands are caught before anything is executed.</p>
+<p>You can pass an entire module, or a string module path, or even individual commands (<a class="reference internal" href="#libclipy.core.command.dfn.CommandDfn" title="libclipy.core.command.dfn.CommandDfn"><code class="xref any py py-class docutils literal notranslate"><span class="pre">CommandDfn</span></code></a> objects).</p>
+<p>By passing the module containing your commands as a string, it will be loaded only if a sub-command is actually called, which is generally preferred for efficiency.</p>
+<p>Finally, you can also pass a callable.
+Using a callable allows you to take more control over the loading of sub-commands.
+You might, for example, want to ensure that necessary packages are installed lazily.</p>
+<p>The callable will be given a string prefix (possibly empty) of a sub-command.
+The callable must return one of the following:</p>
+<ul class="simple">
+<li><p>A list of zero or more matching <a class="reference internal" href="#libclipy.core.command.dfn.CommandDfn" title="libclipy.core.command.dfn.CommandDfn"><code class="xref any py py-class docutils literal notranslate"><span class="pre">CommandDfn</span></code></a> commands.  If the prefix is empty, all commands should be returned.</p></li>
+<li><p>A module (or string path) containing commands</p></li>
+</ul>
+<p>If a command takes an initial positional-only parameter whose name starts with an underscore, then the sub-command <a class="reference internal" href="#libclipy.core.command.command.Command" title="libclipy.core.command.command.Command"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Command</span></code></a> object will be passed to it.
+Otherwise, the command’s return value is used to determine the default argument values passed to the sub-command.</p>
+<section id="explicit-sub-command-control">
+<span id="explicit-control"></span><h3><a class="toc-backref" href="#id11" role="doc-backlink">Explicit Sub-command Control</a><a class="headerlink" href="#explicit-sub-command-control" title="Link to this heading"></a></h3>
+<p>By explicitly receiving the sub-command <a class="reference internal" href="#libclipy.core.command.command.Command" title="libclipy.core.command.command.Command"><code class="xref any py py-class docutils literal notranslate"><span class="pre">Command</span></code></a> object, you are responsible for calling it however you want.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sub_module</span>
+
+<span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sub_marine</span><span class="p">(</span><span class="n">_sub</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span>  <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;got: </span><span class="si">{</span><span class="n">_sub</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">b</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">a</span><span class="o">+</span><span class="n">b</span>
+
+<span class="nd">@CLI</span><span class="p">(</span><span class="s1">&#39;.lazy_loaded_module&#39;</span><span class="p">,</span> <span class="n">sub_module</span><span class="p">,</span> <span class="n">sub_marine</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">_sub</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;result: </span><span class="si">{</span><span class="n">_sub</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The arguments passed when calling <code class="docutils literal notranslate"><span class="pre">_sub(3,</span> <span class="pre">b=4)</span></code> act as default values and may be overridden by arguments given from the command line.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>foo<span class="w"> </span>sub-marine<span class="w"> </span><span class="m">6</span>
+<span class="go">got: None 6 4</span>
+<span class="go">result: 10</span>
+</pre></div>
+</div>
+</section>
+<section id="implicit-sub-command-control">
+<span id="implicit-control"></span><h3><a class="toc-backref" href="#id12" role="doc-backlink">Implicit Sub-command Control</a><a class="headerlink" href="#implicit-sub-command-control" title="Link to this heading"></a></h3>
+<p>If the command does not take an initial, <a class="reference internal" href="#hidden-params"><span class="std std-ref">hidden</span></a>, positional-only parameter, then the command’s return value is used to determine the default argument values passed to the sub-command.</p>
+<p>In that case, the command is expected to return one of <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">*args</span></code>, <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code>, or <code class="docutils literal notranslate"><span class="pre">*args,</span> <span class="pre">**kwargs</span></code>, to be given to the sub-command as default values.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sub_sandwich</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;args:</span><span class="si">{</span><span class="n">args</span><span class="si">}</span><span class="s2"> kwargs:</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="nd">@CLI</span><span class="p">(</span><span class="n">sub_sandwich</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span> <span class="nb">dict</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>foo<span class="w"> </span>sub-sandwich
+<span class="go">args:(3,4) kwargs:{&#39;x&#39;:3}</span>
+
+<span class="gp">$ </span>foo<span class="w"> </span>sub-sandwich<span class="w"> </span>-x<span class="w"> </span><span class="m">9</span>
+<span class="go">args:(3,4) kwargs:{&#39;x&#39;:9}</span>
+
+<span class="gp">$ </span>foo<span class="w"> </span>sub-sandwich<span class="w"> </span>-y<span class="w"> </span>hello<span class="w"> </span>bar
+<span class="go">args:(&#39;bar&#39;,) kwargs:{&#39;x&#39;:3, &#39;y&#39;:&#39;hello&#39;}</span>
+</pre></div>
+</div>
+</section>
+<section id="generators">
+<h3><a class="toc-backref" href="#id13" role="doc-backlink">Generators</a><a class="headerlink" href="#generators" title="Link to this heading"></a></h3>
+<p>Commands may be defined as generator functions (normal or async).</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">ls</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+    <span class="k">yield from</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+<span class="nd">@CLI</span><span class="p">(</span><span class="n">ls</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">_sub</span><span class="p">,</span> <span class="o">/</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">([</span><span class="n">f</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">_sub</span><span class="p">()])</span>
+
+<span class="nd">@CLI</span><span class="p">(</span><span class="n">ls</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">bar</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s1">&#39;.&#39;</span>
+</pre></div>
+</div>
+<p>If <a class="reference internal" href="#implicit-control"><span class="std std-ref">implicit sub-command control</span></a> is used, then the sub-command can be iterated over in the usual way.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>ls<span class="w"> </span>.
+<span class="go">[&#39;CLI.PY&#39;, &#39;README.RST&#39;, ...]</span>
+</pre></div>
+</div>
+<p>If <a class="reference internal" href="#explicit-control"><span class="std std-ref">explicit sub-command control</span></a> is used, then the command’s results are collected into a list.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>bar<span class="w"> </span>ls
+<span class="go">[&#39;cli.py&#39;, &#39;README.rst&#39;, ...]</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="variable-args">
+<h2><a class="toc-backref" href="#id14" role="doc-backlink">Variable Args</a><a class="headerlink" href="#variable-args" title="Link to this heading"></a></h2>
+<p>Both <code class="docutils literal notranslate"><span class="pre">*args</span></code> and <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> are usable features in commands.</p>
+<section id="args">
+<span id="var-args"></span><h3><a class="toc-backref" href="#id15" role="doc-backlink">*args</a><a class="headerlink" href="#args" title="Link to this heading"></a></h3>
+<p>The <a class="reference internal" href="#list-type"><span class="std std-ref">lists</span></a> section above discussed how to get lists of values.
+But that way has one unnatural limitation.
+Keyword arguments must follow the positional arguments which is not nice when dealing with file globs.</p>
+<p>By specifying <code class="docutils literal notranslate"><span class="pre">*args</span></code>, all unprocessed trailing arguments (after keyword arguments have been processed) are captured verbatim into <code class="docutils literal notranslate"><span class="pre">args</span></code>
+Since the trailing arguments are all captured, a command with <code class="docutils literal notranslate"><span class="pre">*args</span></code> cannot have sub-commands.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">first</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">files</span><span class="p">,</span> <span class="n">verbose__v</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;first=</span><span class="si">{</span><span class="n">first</span><span class="si">!r}</span><span class="s2">  verbose=</span><span class="si">{</span><span class="n">verbose__v</span><span class="si">}</span><span class="s2">  files=</span><span class="si">{</span><span class="n">files</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>*
+<span class="go">first=&#39;cli.py&#39;  verbose=False  files=(&#39;README.rst&#39;, ...)</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-<span class="w"> </span>*
+<span class="go">first=None  verbose=False  files=(&#39;cli.py&#39;, &#39;README.rst&#39;, ...)</span>
+</pre></div>
+</div>
+<p>In the first example, the first file name is captured by <code class="docutils literal notranslate"><span class="pre">first</span></code> and the remaining files would go to <code class="docutils literal notranslate"><span class="pre">files</span></code>.
+In the second example, <code class="docutils literal notranslate"><span class="pre">first</span></code> is skipped so all files go to <code class="docutils literal notranslate"><span class="pre">files</span></code>.</p>
+<p>Both the first and second examples have a tricky corner-case.
+If you have a file that starts with a dash <em>(why!?)</em>, then it might be treated as a keyword name and accidentally set the <code class="docutils literal notranslate"><span class="pre">verbose</span></code> flag, for example.
+By explicitly ending the keyword section with <code class="docutils literal notranslate"><span class="pre">--</span></code> you can safely capture any weirdly-named files.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>hello<span class="w"> </span>-vv<span class="w"> </span>--<span class="w"> </span>*
+<span class="go">first=&#39;hello&#39;  verbose=2  files=(&#39;cli.py&#39;, &#39;--verbose&#39;, ...)</span>
+</pre></div>
+</div>
+<p>If your command does not take any keyword parameters (or <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code>) then this is not an issue.</p>
+<p>If your var-args parameter name starts with an underscore (e.g., <code class="docutils literal notranslate"><span class="pre">*_args</span></code>), then it is considered <a class="reference internal" href="#hidden-params"><span class="std std-ref">hidden</span></a> and will not capture additional command-line arguments.
+However, extra positional arguments may still be passed programmatically when calling the sub-command (e.g., <code class="docutils literal notranslate"><span class="pre">_sub(1,2,3)</span></code>).</p>
+</section>
+<section id="kwargs">
+<h3><a class="toc-backref" href="#id16" role="doc-backlink">**kwargs</a><a class="headerlink" href="#kwargs" title="Link to this heading"></a></h3>
+<p>Arbitrary keyword arguments may be collected.
+Values are typed as <code class="docutils literal notranslate"><span class="pre">str</span></code> by default, unless they appear in a <a class="reference internal" href="#bool-type"><span class="std std-ref">:ref:flag group</span></a>, in which case they are typed as <code class="docutils literal notranslate"><span class="pre">bool</span></code>.</p>
+<p>A double dash <code class="docutils literal notranslate"><span class="pre">--</span></code> can be used to force the end of the current command’s argument parsing.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;a=</span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">  kwargs=</span><span class="si">{</span><span class="n">kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-axd<span class="w"> </span><span class="m">33</span><span class="w"> </span>--long-name<span class="w"> </span>hi,bye
+<span class="go">a=True  kwargs={&#39;x&#39;:True, &#39;d&#39;:&#39;33&#39;, &#39;long_name&#39;:&#39;hi,bye&#39;}</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="edge-cases-quirks">
+<h2><a class="toc-backref" href="#id17" role="doc-backlink">Edge Cases / Quirks</a><a class="headerlink" href="#edge-cases-quirks" title="Link to this heading"></a></h2>
+<p>This section highlights some of the rarely encountered edge cases and quirks.</p>
+<section id="backslash-escape">
+<span id="backslash"></span><h3><a class="toc-backref" href="#id18" role="doc-backlink">Backslash Escape</a><a class="headerlink" href="#backslash-escape" title="Link to this heading"></a></h3>
+<p>In order to pass an argument value that starts with a dash (e.g., <code class="docutils literal notranslate"><span class="pre">-not-a-keyword</span></code>) you must escape the initial dash with a backslash.</p>
+<p><strong>Note</strong>: Values that do not look like keywords (e.g., negative numbers) do not need to be escaped.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">x</span><span class="p">:</span><span class="nb">list</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span><span class="nb">int</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x=</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">  y=</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Note</strong>: The shell eats one backslash if you don’t surround the argument in quotes.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="se">\\</span>-y<span class="w"> </span>-9<span class="w"> </span><span class="se">\\</span>-<span class="w"> </span>-y<span class="w"> </span>-3
+<span class="go">x=[&#39;-y&#39;, &#39;-9&#39;, &#39;-&#39;]  y=-3</span>
+</pre></div>
+</div>
+<p>For consistency, a single leading backslash is removed from any value during parsing.
+The exception is arguments captured as <a class="reference internal" href="#var-args"><span class="std std-ref">*args</span></a> are kept as-is without leading backslashes getting removed.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="se">\\\\</span>hi<span class="w"> </span><span class="se">\\</span><span class="w"> </span>-y<span class="w"> </span><span class="se">\\</span><span class="m">33</span>
+<span class="go">x=[&#39;\\hi&#39;, &#39;&#39;]  y=33</span>
+</pre></div>
+</div>
+<p>Notice the argument with a single backslash <code class="docutils literal notranslate"><span class="pre">\\</span></code> becomes an empty string after the leading backslash is removed.</p>
+</section>
+<section id="hidden-parameters">
+<span id="hidden-params"></span><h3><a class="toc-backref" href="#id19" role="doc-backlink">Hidden Parameters</a><a class="headerlink" href="#hidden-parameters" title="Link to this heading"></a></h3>
+<p>A single, leading underscore on a parameter marks it as ‘hidden’.
+This means it will not be settable with command-line arguments, and it is not visible in generated documentation.
+Such parameters are only usable programmatically.
+This also applies to <a class="reference internal" href="#var-args"><span class="std std-ref">*args and **kwargs</span></a> parameters.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">bar</span><span class="p">(</span><span class="n">_sub</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="o">**</span><span class="n">_kwargs</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;bar: sub=</span><span class="si">{</span><span class="n">_sub</span><span class="si">}</span><span class="s2">  q=</span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s2">  kwargs=</span><span class="si">{</span><span class="n">_kwargs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="nd">@CLI</span><span class="p">(</span><span class="n">bar</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">_sub</span><span class="p">,</span> <span class="o">/</span><span class="p">,</span> <span class="n">_x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">_z</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mi">4</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;foo: x=</span><span class="si">{</span><span class="n">_x</span><span class="si">}</span><span class="s2">  y=</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">  z=</span><span class="si">{</span><span class="n">_z</span><span class="si">}</span><span class="s2">  t=</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">_sub</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">r</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span><span class="m">6</span><span class="w"> </span><span class="m">7</span><span class="w"> </span>bar
+<span class="go">foo: x=1  y=6  z=3  t=7</span>
+<span class="go">bar: sub=None  q=10  kwargs={&#39;r&#39;:11}</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>bar<span class="w"> </span>-r<span class="w"> </span><span class="m">11</span>
+<span class="go">Unknown keyword argument &#39;r&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="trailing-underscore">
+<h3><a class="toc-backref" href="#id20" role="doc-backlink">Trailing Underscore</a><a class="headerlink" href="#trailing-underscore" title="Link to this heading"></a></h3>
+<p>By adding a single trailing underscore to your command name or parameter name, you can alias Python keywords.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">break_</span><span class="p">(</span><span class="n">if_</span><span class="p">,</span> <span class="n">else_</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;if=</span><span class="si">{</span><span class="n">if_</span><span class="si">}</span><span class="s2">  else=</span><span class="si">{</span><span class="n">else_</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span><span class="k">break</span><span class="w"> </span><span class="k">if</span><span class="o">=</span>cookie<span class="w"> </span><span class="k">else</span><span class="w"> </span>fix
+<span class="go">if=&#39;cookie&#39;  else=&#39;fix&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="skip-argument">
+<h3><a class="toc-backref" href="#id21" role="doc-backlink">Skip Argument</a><a class="headerlink" href="#skip-argument" title="Link to this heading"></a></h3>
+<p>As stated in the section on <a class="reference internal" href="#list-type"><span class="std std-ref">lists</span></a>, a single dash <code class="docutils literal notranslate"><span class="pre">-</span></code> ends the processing of that list and moves to the next parameter.</p>
+<p>More generally, a single dash skips that parameter, even if it is not a <code class="docutils literal notranslate"><span class="pre">list</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@CLI</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">]):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x=</span><span class="si">{</span><span class="n">x</span><span class="si">}</span><span class="s2">  y=</span><span class="si">{</span><span class="n">y</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>foo<span class="w"> </span>-<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="m">5</span><span class="w"> </span><span class="m">6</span>
+<span class="go">x=1  y=[4, 5, 6]</span>
+</pre></div>
+</div>
+<p>In the same way that a single dash ends the current parameter, a double dash <code class="docutils literal notranslate"><span class="pre">--</span></code> ends the current command and starts parsing the next sub-command.</p>
+<p>Note that since a single dash skips the current parameter, it is not possible to set an empty list to override the default.
+There is no syntax for explicitly setting a list parameter to an empty list from the command-line.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>./cli.py<span class="w"> </span>-<span class="w"> </span>-
+<span class="go">x=1  y=[2,3]</span>
+
+<span class="gp">$ </span>./cli.py<span class="w"> </span>-y<span class="w"> </span>-
+<span class="go">x=1  y=[2,3]</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="class-documentation">
+<h2><a class="toc-backref" href="#id22" role="doc-backlink">Class Documentation</a><a class="headerlink" href="#class-documentation" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="libclipy.core.command.dfn.CommandDfn">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libclipy.core.command.dfn.</span></span><span class="sig-name descname"><span class="pre">CommandDfn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">_</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libclipy/core/command/dfn.html#CommandDfn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libclipy.core.command.dfn.CommandDfn" title="Link to this definition"></a></dt>
+<dd><p>This is a Python type that defines a command.</p>
+<p>It holds information about the command such as, its name, parameters (<code class="docutils literal notranslate"><span class="pre">inspect.signature</span></code>)</p>
+<p>Don’t create CommandDfn types directly.  Instead use the <a class="reference internal" href="#libclipy.core.command.dfn.CLI" title="libclipy.core.command.dfn.CLI"><code class="xref any py py-class docutils literal notranslate"><span class="pre">&#64;CLI</span></code></a> decorator.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libclipy.core.command.command.Command">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libclipy.core.command.command.</span></span><span class="sig-name descname"><span class="pre">Command</span></span><a class="reference internal" href="../_modules/libclipy/core/command/command.html#Command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libclipy.core.command.command.Command" title="Link to this definition"></a></dt>
+<dd><p>A Command is an object of type <a class="reference internal" href="#libclipy.core.command.dfn.CommandDfn" title="libclipy.core.command.dfn.CommandDfn"><code class="xref any py py-class docutils literal notranslate"><span class="pre">CommandDfn</span></code></a>.</p>
+<p>You can bind arguments to it and then run it.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="libclipy.core.command.dfn.CLI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">libclipy.core.command.dfn.</span></span><span class="sig-name descname"><span class="pre">CLI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">need</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_required</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/libclipy/core/command/dfn.html#CLI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#libclipy.core.command.dfn.CLI" title="Link to this definition"></a></dt>
+<dd><p>This is a decorator used on functions to turn them into <a class="reference internal" href="#libclipy.core.command.dfn.CommandDfn" title="libclipy.core.command.dfn.CommandDfn"><code class="xref any py py-class docutils literal notranslate"><span class="pre">CommandDfn</span></code></a>.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../README.html" class="btn btn-neutral float-left" title="cli.py" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="environment.html" class="btn btn-neutral float-right" title="Environment" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright .</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
