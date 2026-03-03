@@ -43,7 +43,7 @@ Using ``-h`` or ``--help`` will show the docstring documentation.
 
 .. code-block:: console
 
-    $ ./cli.py -t 3 --say Ho
+    $ ./cli.py hello -t 3 --say Ho
     Ho Ho Ho
 
 If the value returned from a command is not ``None``, then it is pretty-printed.
@@ -66,7 +66,7 @@ But ``times__t`` is keyword only so it cannot be given positionally.
 Positional vs. Keyword
 =======================
 
-Positional parameters always precede keyword arguments (with the exception of ``\*args`` as described later).
+Positional parameters always precede keyword arguments (with the exception of ``*args`` as described later).
 
 First, command line arguments are taken one by one until a dash argument (that might be a keyword) is encountered which indicates the start of keyword arguments.  Note that negative numbers don't look like a keyword, so they are accepted as-is.
 
@@ -91,11 +91,16 @@ Positional
             --carrot <int>, -c <int>
                 Keyword only
         '''
-        # foo 4 bye --carrot 42
-        # foo 4 -c 42 -b bye
-        a == 4
-        banana__b == 'bye'
-        carrot__c == 42
+        print(f"a={a}  banana={banana__b}  carrot={carrot__c}")
+
+.. code-block:: console
+
+    $ ./cli.py foo 4 bye --carrot 42
+    a=4  banana='bye'  carrot=42
+    
+    $ ./cli.py foo 4 -c 42 -b bye
+    a=4  banana='bye'  carrot=42
+    
 
 The distinction between positional-only, positional or keyword and keyword-only parameters is important.
 Parameters before the ``/`` cannot be specified by name.  Parameters after the ``*`` *must* be given by name.
@@ -107,8 +112,8 @@ Notice how the docstring indicates which parameters may be given positionally.
 Keyword
 --------
 
-Keyword parameters are given with the name (`-x`, `--bob`, `--etc`) followed by the value.
-The value may follow the name after a space (`-x 3`), or be joined with an equals (`-x=3`).
+Keyword parameters are given with the name (``-x``, ``--bob``, ``--etc``) followed by the value.
+The value may follow the name after a space (``-x 3``), or be joined with an equals (``-x=3``).
 
 Multi-letter names must use two dashes, and underscores are turned into dashes, so ``a_long_name`` becomes ``--a-long-name``.
 Single-letter names may use a single dash.
@@ -133,19 +138,17 @@ Bool
 .. code-block:: python
 
     @CLI
-    def foo(*, verbose__v=False, times__t:int):
-        ''' Flags example
+    def foo(*, verbose__v=False, times__t:int=None):
+        print(f"v={verbose__v}  t={times__t}")
 
-        Parameters:
-            --verbose, -v
-                More verbose
-            --times <int>, -t <int>
-                How many times
-        '''
-        # foo -vt 3 --verbose
-        # foo -vv --times 3
-        verbose__v == 2
-        times__t == 3
+.. code-block:: console
+
+    $ ./cli.py foo -vt 100
+    v=True  t=100
+    
+    $ ./cli.py foo -vvv
+    v=3  t=None
+    
 
 Flags are parameters of type ``bool``.
 
@@ -183,7 +186,7 @@ Lists
     def foo(a:int, b:list[float]=None, c=[]):
         print(f"a={a}  b={b}  c={c}")
 
-Since the element type of the third list is unspecified, `str` is assumed.
+Since the element type of the third list is unspecified, ``str`` is assumed.
 
 Arguments are taken and added to the list until a keyword argument is encountered, or a single ``-``.
 For keyword parameters you can optionally repeat the name ``-c 66 -c apples``.
@@ -209,12 +212,16 @@ Tuple
 
     @CLI
     def foo(a:tuple[int,str], b=tuple[str], c=(1,2,3)):
-        # foo 1,hi a,b,c 4,5,6
-        # foo -b a,b,c -c 4,5,6 -a="1,hi"
-        a = (1, 'hi')
-        b = ('a','b','c')
-        c = (4,5,6)
+        print(f"a={a}  b={b}  c={c}")
 
+.. code-block:: console
+
+    $ ./cli.py foo 1,hi a,b,c 4,5,6
+    a=(1, 'hi')  b=('a', 'b', 'c')  c=(4, 5, 6)
+    
+    $ ./cli.py foo -b x -a="1, space"
+    a=(1, ' space')  b=('x', )  c=(1, 2, 3)
+    
 Tuples are given as a comma-separated set of values.
 The number of values is determined by the type.
 If the tuple type specifies a single element type (e.g., ``tuple[bool]``), then any number of values of that type may be given.
@@ -235,15 +242,14 @@ It may or may not parse to a dict.
 
 .. code-block:: console
 
-    $ ./cli.py foo -y=asdfaasdfasdfasdfads
-
+    $ ./cli.py foo -y
 
 
 Sub-Commands
 ==============
 
 A command may have sub-commands. 
-Sub-commands must be discoverable before execution starts, so they are given to the `@CLI` decorator.
+Sub-commands must be discoverable before execution starts, so they are given to the ``@CLI`` decorator.
 
 The complete chain of commands is fully parsed before any commands are actually executed.
 By making the sub-command lookup deterministic we can provide better help and documentation support.
@@ -276,6 +282,7 @@ Explicit Sub-command Control
 By explicitly receiving the sub-command `Command` object, you are responsible for calling it however you want.
 
 .. code-block:: python
+    
     import sub_module
 
     @CLI
