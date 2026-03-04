@@ -2,6 +2,8 @@
 cli.py
 ======
 
+`Read these docs online <blob/docs/markdown/README.md>`__
+
 This project serves two primary purposes.
 
 1. A universal command line interface for any project. (See: :ref:`Commands <page-commands>`)
@@ -38,8 +40,8 @@ This project is a project based on the cli.py concept, so it is a good demonstra
 Getting Started
 ================
 
-Run ``./cli.py -h`` to see what this project can do.
-Run ``./cli.py docs`` and read all the documentation in the browser.
+Run ``./cli.py -h`` to see what commands are available.
+Run ``./cli.py docs view`` and read all of this documentation in the browser.
 
 Create a new project.
 
