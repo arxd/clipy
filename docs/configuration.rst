@@ -1,4 +1,4 @@
-.. _page_config:
+.. _page-config:
 
 #############
 Configuration

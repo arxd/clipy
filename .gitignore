@@ -1,11 +1,17 @@
 # clipy
-local/
+/local/
+/docs/gen/
+/docs/_dist/
 
 # Python
 .python/
 .coverage
+.pytest_cache
 .python-version
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# editors
+.vscode

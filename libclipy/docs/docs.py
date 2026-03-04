@@ -18,10 +18,10 @@ def view(section__s='', *, local__l=False):
     ensure_docs()
     if not local__l: Git(DIST).pull('--rebase')
     section = find_section(section__s)
-    if not section:
-        build()
-        section = find_section(section__s)
-        assert(section), f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build"
+    if not section: raise UsageError(f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build")
+        #build()
+        #section = find_section(section__s)
+        #assert(section), f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build"
     url = 'file://' + section
     print.ln(f'Opening documentation in the browser~lang ja~ブラウザでドキュメントを開く', '...', ['']*2, url)
     try: run(['open', '-a', 'Google Chrome', url])
@@ -36,22 +36,23 @@ def view(section__s='', *, local__l=False):
 def build():
     ''' Build the documentation.
     '''
+    env_bin = os.path.split(sys.executable)[0]
     ensure_docs()
-    cfg = Config()
-    shutil.rmtree('docs/gen')
-    cli_gen('docs/gen/cli')
+    #cfg = Config()
+    shutil.rmtree('docs/gen', ignore_errors=True)
+    #cli_gen('docs/gen/cli')
     env = os.environ.copy()
     env['PYTHONDONTWRITEBYTECODE'] = 'x'
     env['VERSION'] = f'0.1'
-    env['SERVICE_NAME'] = cfg.name
-    shutil.rmtree(DIST/'html')
-    run(['sphinx-build', '-a', '-b', 'html', '-c', 'docs', '.', DIST/'html'], env=env)
-    shutil.rmtree(DIST/'markdown')
-    run(['sphinx-build', '-a', '-b', 'markdown', '-c', 'docs', '.', DIST/'markdown'], env=env)
+    env['SERVICE_NAME'] = 'cfg.name'
+    shutil.rmtree(DIST/'html', ignore_errors=True)
+    run([f"{env_bin}/sphinx-build", '-a', '-b', 'html', '-c', 'docs', '.', DIST/'html'], env=env)
+    shutil.rmtree(DIST/'markdown', ignore_errors=True)
+    run([f"{env_bin}/sphinx-build", '-a', '-b', 'markdown', '-c', 'docs', '.', DIST/'markdown'], env=env)
     
 
 
-
+@CLI
 def push():
     ''' Overwrite the remote documentation with the current built documentation.
     '''
@@ -132,14 +133,14 @@ def create_file(cmd, outfolder, prefix=[]):
 
 
 
-@CLI(build, view)
+@CLI(build, view, push)
 def docs():
     ''' View/build documentation
     '''
 
 
-import os, shutil
+import os, sys, shutil
 #from config import Config
 from libclipy.tools.run import run, UsageError
 from libclipy.tools.git import Git
-from libclipy.print import print
+from libclipy import print

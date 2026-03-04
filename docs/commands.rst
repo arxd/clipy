@@ -11,7 +11,7 @@ The command line interface follows this generic pattern:
 
     [command <positional_argument>* <keyword_argument>*]+
 
-A command is defined by a Python function decorated with ``@CLI``.
+A command is defined by a Python function decorated with `@CLI <CLI>`.
 The function's parameters and the associated docstring fully define the command's interface and documentation.
 
 
@@ -155,10 +155,10 @@ Flags are parameters of type ``bool``.
 Flags may be specified multiple times in which case the value won't be ``True``, but an integer specifying how many times it was given.
 Since ``int(True) == 1`` you can use ``int(verbose__v)`` to get the number of times it was specified.
 
-Flags may be joined with other single-letter names in the usual way. `-vvt x` is equivalent to `-v -v -t x`.
-The last letter of the group may be a non-flag type, but the others *must* be `bool` typed.
+Flags may be joined with other single-letter names in the usual way. ``-vvt x`` is equivalent to ``-v -v -t x``.
+The last letter of the group may be a non-flag type, but the others *must* be ``bool`` typed.
 
-Without a value, `True` is assumed, but you can specify the value in common (case-insensitive) ways:  ``true/false``, ``t/f``, ``yes/no``, ``y/n``, ``on/off``, ``1/0``.
+Without a value, ``True`` is assumed, but you can specify the value in common (case-insensitive) ways:  ``true/false``, ``t/f``, ``yes/no``, ``y/n``, ``on/off``, ``1/0``.
 
 
 Numbers
@@ -227,29 +227,12 @@ The number of values is determined by the type.
 If the tuple type specifies a single element type (e.g., ``tuple[bool]``), then any number of values of that type may be given.
 
 
-JSON
------
-
-A parameter of type ``dict`` is parsed as JSON.
-
-.. code-block:: python
-
-    @CLI
-    def foo(*, y:dict=None):
-        print(y)
-
-It may or may not parse to a dict.
-
-.. code-block:: console
-
-    $ ./cli.py foo -y
-
 
 Sub-Commands
 ==============
 
 A command may have sub-commands. 
-Sub-commands must be discoverable before execution starts, so they are given to the ``@CLI`` decorator.
+Sub-commands must be discoverable before execution starts, so they are given to the `@CLI <CLI>` decorator.
 
 The complete chain of commands is fully parsed before any commands are actually executed.
 By making the sub-command lookup deterministic we can provide better help and documentation support.
@@ -282,7 +265,7 @@ Explicit Sub-command Control
 By explicitly receiving the sub-command `Command` object, you are responsible for calling it however you want.
 
 .. code-block:: python
-    
+
     import sub_module
 
     @CLI
@@ -559,3 +542,12 @@ There is no syntax for explicitly setting a list parameter to an empty list from
 
     $ ./cli.py -y -
     x=1  y=[2,3]
+
+
+Class Documentation
+====================
+
+.. autoclass:: libclipy.core.command.dfn.CommandDfn
+.. autoclass:: libclipy.core.command.command.Command
+.. autoclass:: libclipy.core.command.dfn.CLI
+    

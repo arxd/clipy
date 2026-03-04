@@ -10,17 +10,15 @@ This project serves two primary purposes.
       - They are parsed before any commands are executed.
       - They may be lazy-loaded for efficiency.
       - They may be dynamically loaded to ensure needed packages (or other dependencies) are installed.
-   * Easy-to-read documentation automatically generated from the docstring with `-h` or `--help`.
+   * Easy-to-read documentation automatically generated from the docstring with ``-h`` or ``--help``.
    * The function's annotations and default values are used to coerce the command line arguments to the correct type.
    * A consistent way to call all kinds of function signatures (using ``inspect.signature`` to the fullest extent).
    * Generators, async, and async generators are all supported.
    * The ability to accept multiple list-typed parameters.
-   * \*args and \*\*kwargs have useful abilities.
+   * ``*args`` and ``**kwargs`` have useful abilities.
 
-.. toctree::
-   :maxdepth: 1
 
-   docs/commands
+   `Commands <page-commands>`
 
 
 2. An inline-library of useful functions for scripting and tooling.
@@ -76,6 +74,10 @@ That code is then owned, and can be freely edited/adapted, by the new project.
    :maxdepth: 1
 
    docs/commands
+   docs/environment
+   docs/todo
+   docs/configuration
+   docs/code_layout
 
 * :ref:`genindex`
 * :ref:`modindex`

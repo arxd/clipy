@@ -5,6 +5,8 @@ HELP = Param.from_kw('help', Bool)
 
 
 def CLI(*args, need=None, sub_required=None):
+    ''' This is a decorator used on functions to turn them into `CommandDfn`.
+    '''
     sub_sources = args
     def _wrap(fn):
         type = AsyncGenDfn if inspect.isasyncgenfunction(fn) else AsyncDfn if inspect.iscoroutinefunction(fn) else GenDfn if inspect.isgeneratorfunction(fn) else CommandDfn
@@ -22,6 +24,12 @@ def CLI(*args, need=None, sub_required=None):
 
 
 class CommandDfn(type):
+    ''' This is a Python type that defines a command.
+
+    It holds information about the command such as, its name, parameters (``inspect.signature``)
+
+    Don't create CommandDfn types directly.  Instead use the `@CLI <CLI>` decorator.
+    '''
     def __init__(self, *_):
     # Validate the command name
         self.name = self.__func__.__name__.replace('_','-')

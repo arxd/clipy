@@ -1,6 +1,7 @@
 
 class Command():
-    ''' A Command is an instantiated `CommandDfn`.
+    ''' A Command is an object of type `CommandDfn`.
+
     You can bind arguments to it and then run it.
     '''
     

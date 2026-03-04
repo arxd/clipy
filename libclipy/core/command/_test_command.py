@@ -27,7 +27,7 @@ def test_call():
 
 
 def test_sub_command():
-    @CLI('._testing_cmds', 'libclipy.command._testing_cmds')
+    @CLI('._testing_cmds', 'libclipy.core.command._testing_cmds')
     def foo(x:int, **kwargs): pass
     assert(repr(foo.bind('9','-x','10','bar-')) == f"foo(10) -> bar-fing()")
     assert(repr(foo.bind('9','-x','10','bar','x')) == f"foo(10) -> bar('x', -)")
@@ -123,14 +123,6 @@ def test_int_type():
         ("foo(0, -)", '-0'),
         ("foo(-, [-1, -2, 3, 4, 5])", '-', '-1','-0x2','3','-b','4','5'),
     ]: assert(repr(foo.bind(*t[1:])) == t[0])
-
-
-
-@pytest.mark.xfail
-def test_json_type():
-    ''' dict types parse as json
-    '''
-    assert(0)
 
 
 

@@ -7,7 +7,7 @@ GitRef = namedtuple('GitRef', ('name', 'short', 'type', 'size', 'hash', 'kind', 
 
 
 class Git():
-    sub_cmds = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push']
+    sub_cmds = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
     def __init__(self, repo='.'):
         self.repo = os.path.abspath(repo)
 
@@ -114,7 +114,7 @@ class Git():
 
 
     def __getattr__(self, cmd):
-        if cmd not in self.sub_cmds: return super().__getattr__(cmd)
+        if cmd not in self.sub_cmds: raise AttributeError(f"{cmd!r} is not in sub_cmds: {self.sub_cmds}")
         return partial(self, cmd.replace('_','-'))
 
 

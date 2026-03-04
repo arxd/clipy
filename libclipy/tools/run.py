@@ -131,4 +131,4 @@ class RunException(PrettyException):
 
 
 import json, sys, shlex, os, subprocess
-from libclipy.print import print, Text, CLR, Pretty, Table
+from libclipy import print, Text, CLR, Pretty, Table
