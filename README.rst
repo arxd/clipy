@@ -2,7 +2,7 @@
 cli.py
 ======
 
-`Read these docs online <../../blob/docs/markdown/README.md>`__
+`Read the built documentation <../../blob/docs/markdown/README.md>`__
 
 This project serves two primary purposes.
 

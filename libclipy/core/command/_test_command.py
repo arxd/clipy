@@ -1,5 +1,5 @@
 import pytest
-from .dfn import CLI
+from .dfn import cmd as CLI
 from .errors import *
 from .param import Param, param_type
 

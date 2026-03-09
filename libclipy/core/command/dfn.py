@@ -4,7 +4,7 @@ from .param import Param, Bool
 HELP = Param.from_kw('help', Bool)
 
 
-def CLI(*args, need=None, sub_required=None):
+def cmd(*args, need=None, sub_required=None):
     ''' This is a decorator used on functions to turn them into `CommandDfn`.
     '''
     sub_sources = args

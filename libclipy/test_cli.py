@@ -22,9 +22,10 @@ if __name__ == '__main__':
     sys.exit(0)
 
 
-from libclipy import CLI, pip
 
-@CLI(need=pip('pytest coverage pytest-asyncio pytest-timeout'))
+import libclipy as CLI
+
+@CLI.cmd(need=CLI.pip('pytest coverage pytest-asyncio pytest-timeout'))
 def test(spec=None, /, *, verbose__v=False, coverage__c=False):
     ''' Run all unit tests
 

@@ -1,11 +1,11 @@
-from libclipy import CLI, pip
+import libclipy as CLI
 from pathlib import Path
 
 DIST = Path('docs/_dist')
 
 
 
-@CLI
+@CLI.cmd
 def view(section__s='', *, local__l=False):
     ''' Open the html documentation in the browser.
 
@@ -32,7 +32,7 @@ def view(section__s='', *, local__l=False):
             webbrowser.open(url, new=2)
 
 
-@CLI(need=pip('sphinx-rtd-theme sphinxcontrib-mermaid sphinx-markdown-builder myst-parser Pygments'))
+@CLI.cmd(need=CLI.pip('sphinx-rtd-theme sphinxcontrib-mermaid sphinx-markdown-builder myst-parser Pygments'))
 def build():
     ''' Build the documentation.
     '''
@@ -52,7 +52,7 @@ def build():
     
 
 
-@CLI
+@CLI.cmd
 def push():
     ''' Overwrite the remote documentation with the current built documentation.
     '''
@@ -133,7 +133,7 @@ def create_file(cmd, outfolder, prefix=[]):
 
 
 
-@CLI(build, view, push)
+@CLI.cmd(build, view, push)
 def docs():
     ''' View/build documentation
     '''

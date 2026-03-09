@@ -47,6 +47,7 @@ def ensure_packages(*packages):
     ''' Uses pip to ensure that the packages are installed, but only if we are in a venv.
     '''
     packages = sorted([p.strip() for pkg in packages for p in pkg.split(' ') if p.strip()])
+# Make sure we are in a virtual environment.  We can't install packages into the system.
     project_root = os.path.dirname(os.path.abspath(sys.modules.get('__main__').__file__))
     if not sys.executable.startswith(project_root): return
     venv = os.path.split(os.path.split(sys.executable)[0])[0]

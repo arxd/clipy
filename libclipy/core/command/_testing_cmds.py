@@ -1,19 +1,19 @@
-from .dfn import CLI
+from .dfn import cmd
 
 
-@CLI()
+@cmd()
 def bar(x, y):
     pass
 
-@CLI()
+@cmd()
 def baz_():
     pass
 
-@CLI
+@cmd
 def bar_fing():
     pass
 
-@CLI
+@cmd
 def jim():
     pass
 
