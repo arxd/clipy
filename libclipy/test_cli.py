@@ -1,5 +1,6 @@
 import os, sys, json
 
+
 # We want to run the coverage and pytest in a separate process so that it has a clean environment to see all imports
 if __name__ == '__main__':
     import coverage, pytest
@@ -23,7 +24,7 @@ if __name__ == '__main__':
 
 
 
-import libclipy as CLI
+from libclipy import CLI
 
 @CLI.cmd(need=CLI.pip('pytest coverage pytest-asyncio pytest-timeout'))
 def test(spec=None, /, *, verbose__v=False, coverage__c=False):
@@ -55,7 +56,7 @@ def test(spec=None, /, *, verbose__v=False, coverage__c=False):
     args.append('--maxfail=1')
     if spec: args.append(spec)
 # run pytest.main in a separate process (Because it needs it's own event loop and a clean module load)
-    from libclipy.setup import run
+    from libclipy.core.setup import run
     if (r:=run([sys.executable, 'libclipy/test_cli.py', json.dumps(args)])): sys.exit(r)
     if coverage__c:
         url = 'local/coverage/index.html'

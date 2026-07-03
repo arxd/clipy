@@ -9,11 +9,11 @@ def bar(x, y):
 def baz_():
     pass
 
-@cmd
+@cmd()
 def bar_fing():
     pass
 
-@cmd
+@cmd()
 def jim():
     pass
 

@@ -2,14 +2,22 @@
 class Command():
     ''' A Command is an object of type `CommandDfn`.
 
-    You can bind arguments to it and then run it.
+    Arguments can be bound from command-line arguments.
+    Then the command can be called in any of four ways: sync/async, function/generator.
+    The underlying __func__ (in the CommandDfn) also has those same four types.
+    In addition, the __func__ may be implicit or explicit (see commands.rst::_sub_commands).
+
+    4*4*2 gives us a total of 32 possible interactions.
+
     '''
     
     def __init__(self):
-    # These are the arguments (just the values) to the commands
+    # These are the bound arguments (just the values) to this command
         self.args = [Param.unset for p in self.params.values() if p.idx is not None]
         self.kwargs = {}
+    # If we have a sub-command
         self.sub = None
+    # The string arguments if our CommandDfn defined *args
         self.vargs = []
 
 
@@ -21,18 +29,33 @@ class Command():
 
 
     def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
+    
+
+    def call(self, *args, **kwargs):
         args, kwargs = self.args_kwargs(*args, **kwargs)
-        if args and args[0] is self.sub: 
-            return type(self).__func__(*args, **kwargs)
-        else:
-            r = type(self).__func__(*args, **kwargs)
-            if self.sub is None: return r
-            if r is None: r = ([], {})
-            if len(r) == 1: r = ([], r[0]) if isinstance(r, dict) else (r[0], {})
-            return self.sub(*r[0], **r[1])
+        return type(self).c_call(*args, **kwargs)
+    
+
+    async def call_async(self, *args, **kwargs):
+        args, kwargs = self.args_kwargs(*args, **kwargs)
+        return await type(self).c_call_async(*args, **kwargs)
+    
+
+    def each(self, *args, **kwargs):
+        args, kwargs = self.args_kwargs(*args, **kwargs)
+        yield from type(self).c_each(*args, **kwargs)
+
+
+    async def each_async(self, *args, **kwargs):
+        args, kwargs = self.args_kwargs(*args, **kwargs)
+        async for v in type(self).c_each_async(*args, **kwargs): yield v
 
 
     def bind_cli(self, args):
+        ''' `args` is a list of string arguments that came from the command line.
+        They are parsed and matched to the command's parameters.
+        '''
     # First parse positional arguments
         for p in self.params.values():
             if not args or p.idx is None: break
@@ -66,13 +89,13 @@ class Command():
     
 
     def bind_sub(self, args):
-    # If we don't have sub-command arguments make sure that we done require a sub-command
+    # If we don't have sub-command arguments make sure that we don't require a sub-command
         if not args:
-            if type(self).sub_required: raise HelpWanted(cmd=self)
+            if type(self).sub_required: raise SubRequired(cmd=self)
             return
     # Attempt to find the sub
         try:
-            sub = type(self).sub_cmd(args[0])
+            sub = type(self).get_sub_command(args[0] or '<blank>')
         except (UnknownSubCommand, AmbiguousSubCommand) as e:
             if not e.subs: raise ExtraArguments(cmd=self, extra=args)
             raise e
@@ -82,11 +105,14 @@ class Command():
 
 
     def args_kwargs(self, *default_args, **default_kwargs):
+        ''' Figure out final args/kwargs for calling the commands function (__func__).
+        Any arguments previously bound with bind_cli() will take precedent over the default args given to this method.
+        '''
     # Validate the default arguments
         if 'h' in default_kwargs or 'help' in default_kwargs: raise ValueError(f"'help' and 'h' are reserved keywords")
         default_kwargs.update({k:v for k,v in self.kwargs.items() if v is not Param.unset})
         args = []
-        kwargs = {}
+        kwargs = {type(self).sub_param_name:self.sub}
     # Find a value for each parameter
         for p in self.params.values():
             if p.idx is None:
@@ -99,10 +125,6 @@ class Command():
                 kwargs[p.name] = v
             else:
          # Positional or keyword
-                # Inject the sub-command as the first arg?
-                if not p.is_kw and p.name.startswith('_') and p.idx == 0:
-                    args.append(self.sub)
-                    continue
             # First pop off a keyword if possible.  This will not be a keyword from the command line, so it is a good starting place
                 v = default_kwargs.pop(p.name) if p.is_kw and p.name in default_kwargs else Param.unset
             # Overwrite with the command-line argument
@@ -116,7 +138,7 @@ class Command():
         elif default_args[len(args):]: raise TypeError(f"Only {len(args)} positional arguments allowed, but {len(default_args)} were given")
         if self.var_kw is None and default_kwargs: raise TypeError(f"Got unexpected keyword arguments: {', '.join(repr(x) for x in default_kwargs)}")
         return (args, kwargs)
-
+    
 
 
 def _each_key(args):
@@ -142,4 +164,4 @@ def _each_key(args):
 
 from .param import Param, Bool, Str
 from .dfn import HELP
-from .errors import UnknownKey, NotBool, MissingArgument, ExtraArguments, UnknownSubCommand, AmbiguousSubCommand, HelpWanted
+from .errors import UnknownKey, NotBool, MissingArgument, ExtraArguments, UnknownSubCommand, AmbiguousSubCommand, HelpWanted, SubRequired

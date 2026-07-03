@@ -1,15 +1,14 @@
-from libclipy import Target, ConfigVar
+from libclipy.CLI import ConfigVar, Target
 
-verbose = ConfigVar("verbose The verbosity level. 0 is normal, positive is more verbose, negative less verbose", 0)
+grep_groups = ConfigVar("grep_groups", {'libclipy': r'libclipy/.*'})
 
-bob = ConfigVar("bob This is a nice guy", "yup")
-cob = ConfigVar("cob")
 
 @Target.define(default='dev')
 def local():
-    print("Configure local")
-    verbose(3)
+    pass
+
 
 @Target.define
-def prod():
-    print("Configure prod")
+def stage():
+    pass
+

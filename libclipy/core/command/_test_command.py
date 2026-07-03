@@ -12,10 +12,16 @@ def test_bind_cli_missing():
     assert(0)
 
 
+@pytest.mark.xfail
+def test_blank_sub():
+    ''' Try to get <blank> subcommand to throw
+    '''
+    assert(0)
+
 
 def test_call():
     args = kwargs = None
-    @CLI
+    @CLI()
     def foo(x:int, *_args, **_kwargs):
         nonlocal args, kwargs
         args, kwargs = _args*x, _kwargs
@@ -27,8 +33,9 @@ def test_call():
 
 
 def test_sub_command():
-    @CLI('._testing_cmds', 'libclipy.core.command._testing_cmds')
+    @CLI('._testing_cmds')
     def foo(x:int, **kwargs): pass
+    print(foo.sub_commands())
     assert(repr(foo.bind('9','-x','10','bar-')) == f"foo(10) -> bar-fing()")
     assert(repr(foo.bind('9','-x','10','bar','x')) == f"foo(10) -> bar('x', -)")
     with pytest.raises(UnknownSubCommand) as e:
@@ -46,7 +53,7 @@ def test_sub_command():
 def test_nothing_for_list():
     ''' Don't give a list anything
     '''
-    @CLI
+    @CLI()
     def foo(x:list[int]): pass
     for t in [
         ("foo(-)", ),
@@ -61,7 +68,7 @@ def test_nothing_for_list():
 def test_list_accumulation():
     ''' Repeated values extend lists
     '''
-    @CLI
+    @CLI()
     def foo(x:list[bool]): pass
     assert(repr(foo.bind('T', 'F', 'T', '-x', 'F', 'T', '-x', 'T')) == "foo([True, False, True, False, True, True])")
     with pytest.raises(ParseError) as e:
@@ -73,16 +80,16 @@ def test_list_accumulation():
 def test_skip_keyword():
     ''' --key-word -
     '''
-    @CLI
-    def foo(*, x:bool, y:int): pass
-    foo.bind('-y', '-', '-xx', '-')
+    @CLI()
+    def foo(*args, x:bool, y:int): pass
+    assert(repr(foo.bind('-y', '-', '-xx', '-', 'false')) == "foo('false', y=-, x=True)")
 
 
 
 def test_keyword_equals():
     ''' --kw=abc
     '''
-    @CLI
+    @CLI()
     def foo(x:bool, *, bob_cob, j): pass
     for t in [
         ("foo(True, bob_cob='-x', j='1 2 3')", '--bob-cob=-x', '-xj=1 2 3'),
@@ -93,7 +100,7 @@ def test_keyword_equals():
 def test_tuple_type():
     '''  x:tuple  tuple[]  tuple[int]  tuple[int*]  tuple[int,str]
     '''
-    @CLI
+    @CLI()
     def foo(a:tuple, b:tuple[int], c:(int,str), d=tuple(), e=(1,True)): pass
     for t in [
         ("foo(('a', 'b', 'c'), (-3, 4, 5), (6, '7'), ('-', '', ' '), (9, True))", 'a,b,c', '-3,4,5', '6,7', '-,, ', '9,y'),
@@ -113,7 +120,7 @@ def test_tuple_type():
 def test_int_type():
     ''' Different int possibilites
     '''
-    @CLI
+    @CLI()
     def foo(a:int, b:list[int]): pass
     with pytest.raises(ParseError):
         foo.bind('-0.0')
@@ -129,28 +136,47 @@ def test_int_type():
 def test_bool_type():
     ''' Bool type is a flag when keyword only, otherwise true false
     '''
-    @CLI
-    def foo(a:bool, /, b:bool, *, c:bool, d:int): pass
+    @CLI()
+    def foo(a:bool, /, b:bool, *args, c:bool, d:int): pass
     with pytest.raises(NotBool) as e:
-        foo.bind('-dc', '3')
+        foo.bind('-dc')
     assert('-dc' in str(e.value) and "'int'" in str(e.value))
     with pytest.raises(ParseError):
         foo.bind('nope')
     for t in [
-        ("foo(True, -)", '\\t'),
-        ("foo(-, 2, c=3)", '-', '1', '-bccc'),
+        ("foo(False, -)", 'disable'),
+        ("foo(True, True, 't')", '1', '-b', '\\t','t'),
+        ("foo(-, 11, c=3)", '-', '10', '-bccc'),
         ("foo(-, -, c=4, d=5)", '-ccd', '3', '-c', '-d', '5', '-c'),
-        ("foo(-, False, c=False)", '-', '1', '-ccc', 'off', '-b','FALSE'),
-        ("foo(-, 3)", '-','t', '-bb', 't'),
+        ("foo(-, -, c=False)", '-ccc', '0'),
+        ("foo(-, -, 'cmd', c=5)", '-ccc', '3', 'cmd'),
+        ("foo(-, 2, 'FALSE', c=False)", '-', '1', '-ccc', '0', '-b','FALSE'),
+        ("foo(-, 3, 't')", '-','t', '-bb', 't'),
+        ("foo(-, False)", '-b', '\\FALSE')
     ]: assert(repr(foo.bind(*t[1:])) == t[0])
 
+
+
+def test_bool_kw():
+    ''' When bool is used as a kw it only accepts 1/0 as an argument and otherwise defaults to True.
+    This is so that there are not conflicts with the next command name
+    '''
+    @CLI()
+    def foo(*args, c:bool): pass
+    for v in ['t', 'True', 'False', 'Off', 'no', 'disable']:
+        assert(repr(foo.bind('-c', v)) == f"foo({v!r}, c=True)"), v
+    assert(repr(foo.bind('-c', '3')) == f"foo(c=3)")
+    assert(repr(foo.bind('-cc', '0')) == f"foo(c=False)")
+    for v in ['#','\\bad']:
+        with pytest.raises(ParseError):
+            foo.bind('-c', v)
 
 
 
 def test_missing_argument():
     ''' You must pass an argument to a kw arg
     '''
-    @CLI
+    @CLI()
     def foo(*, a:bool, b:int, c:list, **kwargs): pass
     with pytest.raises(MissingArgument) as e:
         foo.bind('-ab', '-a')
@@ -162,7 +188,7 @@ def test_missing_argument():
 
 
 def test_args_kwargs():
-    @CLI
+    @CLI()
     def foo(a,/,b,*,the_cat__c__kitty, d__dog='woof'): pass
     with pytest.raises(ValueError) as e:
         foo.bind().args_kwargs(h=3)
@@ -173,28 +199,28 @@ def test_args_kwargs():
     with pytest.raises(MissingArgument) as e:
         foo.bind('-c','bob').args_kwargs(Param.unset, 4)
     assert("'a'" in str(e.value))
-    assert(foo.bind('1','-c','4').args_kwargs(Param.unset, 2, d__dog=Param.unset) == (['1',2], {'the_cat__c__kitty':'4', 'd__dog':'woof'}))
+    assert(foo.bind('1','-c','4').args_kwargs(Param.unset, 2, d__dog=Param.unset) == (['1',2], {'_d29fdj0': None,'the_cat__c__kitty':'4', 'd__dog':'woof'}))
     with pytest.raises(TypeError) as e:
         foo.bind('1','2', '-c', '3').args_kwargs(1,2,3,5)
     assert('4' in str(e.value))
     with pytest.raises(TypeError) as e:
         foo.bind('1','2').args_kwargs(the_cat__c__kitty=3, b=4, a=1)
     assert('unexpected keyword' in str(e.value) and "'a'" in str(e.value))
-    assert(foo.bind('-c','x', '-d','-').args_kwargs(1,2,b=3,the_cat__c__kitty=9, d__dog=10) == ([1,3], {'the_cat__c__kitty':'x', 'd__dog':10}))
-    @CLI
+    assert(foo.bind('-c','x', '-d','-').args_kwargs(1,2,b=3,the_cat__c__kitty=9, d__dog=10) == ([1,3], {'_d29fdj0': None,'the_cat__c__kitty':'x', 'd__dog':10}))
+    @CLI()
     def foo(a, *args, **kwargs): pass
-    assert(foo.bind('-','b','c').args_kwargs(1,2,3,4,5) == ([1,'b','c'], {}))
-    assert(foo.bind('a').args_kwargs(1,2,3,4,5) == (['a',2,3,4,5], {}))
+    assert(foo.bind('-','b','c').args_kwargs(1,2,3,4,5) == ([1,'b','c'], {'_d29fdj0': None,}))
+    assert(foo.bind('a').args_kwargs(1,2,3,4,5) == (['a',2,3,4,5], {'_d29fdj0': None,}))
 
 
 
 def test_var_pos():
     ''' Extra arguments at the end go to varargs
     '''
-    @CLI
+    @CLI()
     def foo(x, y=3, *rest): pass
     assert(repr(foo.bind('a', '--', '-c', '-d')) == "foo('a', -, '-c', '-d')")
-    @CLI
+    @CLI()
     def foo(x, y, *_rest): pass
     with pytest.raises(ExtraArguments) as e:
         foo.bind('a','b', 'x y z', 't')
@@ -207,7 +233,7 @@ def test_custom_parser():
     '''
     @param_type
     def my_parser(self, sval, kw): return sval.upper()
-    @CLI
+    @CLI()
     def foo(x:my_parser, y:list[my_parser]): pass
     assert(repr(foo.bind('abc', 'def', 'ghi')) == "foo('ABC', ['DEF', 'GHI'])")
 
@@ -216,13 +242,13 @@ def test_custom_parser():
 def test_var_kw():
     ''' Unknown kwargs get added to kwargs
     '''
-    @CLI
+    @CLI()
     def foo(a, /, *, b__bob:bool, **kwargs): pass
     for t in [
         ("foo(-, b__bob=True, a='xyz', bob_cob='99', x='-abc')", '-ba','xyz', '--bob-cob', '99', '-x', '\\-abc'),
     ]: assert(repr(foo.bind(*t[1:])) == t[0])
 
-    @CLI
+    @CLI()
     def foo(a, /, b__bob_cob:bool, **_kwargs): pass
     with pytest.raises(UnknownKey) as e:
         foo.bind('-ba', '3')
@@ -236,7 +262,7 @@ def test_var_kw():
 def test_var_kw_coerce():
     ''' Unknown kwargs get added to kwargs
     '''
-    @CLI
+    @CLI()
     def foo(a:int, /, *, b__bob:int, **kwargs): pass
     with pytest.raises(ParseError) as e:
         foo.bind('-b', '3.2')
@@ -247,7 +273,7 @@ def test_var_kw_coerce():
 def test_positional():
     ''' Run out of arguments
     '''
-    @CLI
+    @CLI()
     def foo(a,b=3,/,c:float=None): pass
     with pytest.raises(ParseError) as e:
         foo.bind('-','9.9')
@@ -266,7 +292,7 @@ def test_positional_list():
     ''' Positional list items are taken until a hyphen ends the list
         x:list[]  x:list[bool]
     '''
-    @CLI
+    @CLI()
     def foo(a:list, b:list[int], c:list[bool]=[1,2,3], d=[1.0]): pass
     for t in [
         ("foo(['a', 'b', 'c'], -, -, -)", 'a','b','c'),
@@ -282,21 +308,21 @@ def test_command_name():
     ''' Command names can only use single underscores, no leading underscores
     '''
     with pytest.raises(InvalidCommandName) as e:
-        @CLI
+        @CLI()
         def bad__(): pass
     assert('double' in str(e.value))
     with pytest.raises(InvalidCommandName):
-        @CLI
+        @CLI()
         def _leading(): pass
     with pytest.raises(InvalidCommandName) as e:
-        @CLI
+        @CLI()
         def _(): pass
     assert('leading' in str(e.value))
-    @CLI
+    @CLI()
     def good_(): pass
-    @CLI
+    @CLI()
     def good_also_(): pass
-    @CLI
+    @CLI()
     def this_is_also_fine(): pass
 
 
@@ -305,7 +331,7 @@ def test_alias_duplicate():
     ''' Aliases must be unique
     '''
     with pytest.raises(DuplicateArgumentAlias) as e:
-        @CLI
+        @CLI()
         def foo(alias1__bob__c, d__bob): pass
     assert('bob' in str(e.value).lower())
 
@@ -315,14 +341,14 @@ def test_alias_help():
     ''' You can't alias 'h' or 'help'
     '''
     with pytest.raises(DuplicateArgumentAlias) as e:
-        @CLI
+        @CLI()
         def foo(bob__help): pass
     assert('help' in str(e.value).lower())
     with pytest.raises(DuplicateArgumentAlias):
-        @CLI
+        @CLI()
         def foo(help): pass
     with pytest.raises(DuplicateArgumentAlias):
-        @CLI
+        @CLI()
         def foo(bob__h): pass
             
 
@@ -330,7 +356,7 @@ def test_alias_help():
 def test_hidden_names():
     ''' Names beginning with underscore are ignored
     '''
-    @CLI
+    @CLI()
     def foo(*, a__b, _c__d, __efg): pass
     assert(set() == ({'a', 'a__b', 'b'} - foo.alias.keys()))
     assert(set() == {'c','_c__d','d','efg','_efg','__efg'} & foo.alias.keys())
@@ -345,6 +371,6 @@ def test_hidden_names():
 
 def test_alias_underscores():
     ''' Trailing underscores are ignored, inner underscores are dashes '''
-    @CLI
+    @CLI()
     def foo(a___b__c_, d, e_f________g______, j__i): pass
     assert( {'a___b__c_', 'e_f________g______', 'j__i', 'a','b','c','d','e-f','e_f','g','h','i','j','help'} == set(foo.alias.keys()))

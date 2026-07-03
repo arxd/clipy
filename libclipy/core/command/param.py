@@ -186,24 +186,36 @@ class Bool(ParamType):
     name = 'bool'
 
     def simple_parse(self, sval, kw):
-        names = ['true','t','yes','y','on','1',  'false','f','no','n','off','0']
-        assert(sval.lower() in names), f"Must be one of (case insensitive):  { ', '.join('/'.join(x) for x in zip(names,names[:len(names)/2]))}"
-        return names.index(sval.lower()) < len(names)/2
+        names = ['true','t','yes','y','on','enable',  'false','f','no','n','off','disable']
+        if sval.lower() in names: return names.index(sval.lower()) < len(names)/2
+    # See if it is an int?
+        try:
+            return int(sval)
+        except ValueError:
+            raise ValueError(f"Must be an integer or one of (case insensitive):  { ', '.join('/'.join(x) for x in zip(names,names[:len(names)/2]))}")
+ 
     
     def parse(self):
-    # If we run out of args.  It is fine for a bool to be at the end when parsing as keyword, otherwise move on to keywords
-        if not self.args: return (Param.unset, True) if isinstance(self.key_arg, int) else (self.change_v(True), False) 
-    # Use the normal simple_parse mechanism for `-` and non kw arguments
-        if self.args[0] == '-' or not _is_kw(self.args[0]):
-            v, kw = super().parse()
-            return self.change_v(v), kw
-    # If we are parsing as a positional parameter then move to parsing keywords
-        if isinstance(self.key_arg, int): return Param.unset, True
-    # If we are parsing as a keyword parameter then treat it as true and move on
-        return self.change_v(True), False
-    
+        ''' parsing logic differs between keyword and positional usage
+        '''
+        # Parsing positional parameter
+        if isinstance(self.key_arg, int): 
+            if not self.args or (self.args[0] != '-' and _is_kw(self.args[0])): return (Param.unset, True)
+
+        # Parsing keyword parameter
+        else:
+            if not self.args: return (self.change_v(True), False)
+            # Add a dash so that command names also look like keywords
+            if self.args[0] != '-' and _is_kw(f"-{self.args[0]}"): return (self.change_v(True), False)
+
+        # Fallback to default parsing
+        v, kw = super().parse()
+        return (self.change_v(v), kw)
+
+
     def change_v(self, v):
-        if not v: return v
+        if v is Param.unset: return self.v
+        if not v: return False
         v = (self.v or 0) + v
         return v if v > 1 else True
 

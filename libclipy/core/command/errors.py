@@ -1,8 +1,18 @@
+from ..errors import PrettyException
 
 
-class CommandError(Exception):
+class CtlCException(PrettyException):
+    def pretty(self):
+        print('')
+
+
+class CommandError(PrettyException):
     def __init__(self, **kwargs):
         for k,v in kwargs.items(): setattr(self, k,v)
+
+    def pretty(self):
+        print(str(self))
+        print("\nError: Run with -h or --help for additional documentation for this command.\n")
 
 
 
@@ -80,9 +90,20 @@ class AmbiguousSubCommand(BindError):
 
 
 class HelpWanted(BindError):
-    def __str__(self):
-        return f"Help need {self.cmd}"
+    def pretty(self):
+        import inspect
+        subs = list(self.cmd.__class__.sub_commands())
+        subs = [(str(s), (s.__doc__ or '').split('\n')[0].strip()) for s in subs]
+        w = max(0,0,*[len(c[0]) for c in subs])
+        for s in subs:
+            print(f"  * {s[0]}{' '*(w-len(s[0]))}  {s[1]}")
+        if subs: print('')
+        print(inspect.cleandoc(self.cmd.__doc__ or ''))
 
+
+class SubRequired(BindError):
+    def __str__(self):
+        return f"Sub-command expected: {' '.join(str(n) for n in type(self.cmd).sub_commands())}"
 
 
 def _ord(i):

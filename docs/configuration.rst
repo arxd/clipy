@@ -4,26 +4,20 @@
 Configuration
 ==================
 
-Any function needs parameters.  There are explicit parameters that are sent to the function.
-There is also ambient parameters (global variables) that the function can use.
+Any function needs parameters.
+There are explicit parameters defined for the function, but there are also ambient parameters (global variables) that the function can use.
 
-To ease cognitive load, these global parameters should be constants.
+To ease cognitive load, these global parameters should be constant at runtime.
+
 A `target` is in charge of giving them their initial value.
-
-from .bob.cob import x, y==
-
-x, y = Config('.bob.cob', 'x y')
 
 Variables 
 ============
 
-Each variable needs a name, but what about namespacing if two unrelated packages want to use the same name?
+Each variable needs a name, but what about namespacing if two unrelated packages want to use the same variable name?
 If there were a single config dictionary that held all of the configuration then there would be namespace issues.
 
-The solution is to let the names live in the module namespace and let import deal with name conflicts just like any other module-level object.
-
-
-Configuration variables are global variables so they use standard python import namespacing.
+The solution is to let the names live in the module namespace and then use the standard python ``import as`` mechanism deal with name conflicts.
 
 Secrets
 ---------

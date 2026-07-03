@@ -74,10 +74,10 @@ That code is then owned, and can be freely edited/adapted, by the new project.
    :maxdepth: 1
 
    docs/commands
-   docs/environment
    docs/todo
    docs/configuration
    docs/code_layout
+   docs/pyml
 
 * :ref:`genindex`
 * :ref:`modindex`

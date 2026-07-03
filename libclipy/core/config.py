@@ -1,4 +1,4 @@
-import contextvars, sys, os, cli
+import contextvars, sys, os, cli, inspect, importlib
 
 UNSET = type('UNSET',tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: False})()
 
@@ -20,11 +20,12 @@ def cfg(vars, pkg=None):
         if target_name not in targets: raise ValueError(f"Invalid target {target_name!r}.  Options: {' '.join(targets.keys())}")
     # Load the target
         targets[target_name]()
-    # Environment variables override config.py
+    # Environment variables overwrite config.py
         env.load()
     # Set the target and we're done
         target(target_name)
 # Return the contextvars values
+    if isinstance(pkg, str): pkg = importlib.import_module(pkg)
     out = tuple(getattr(pkg, v).v for v in vars.split(' '))
     return out[0] if len(out) == 1 else out
 
@@ -35,9 +36,21 @@ class ConfigVar():
 
     It stores meta data like documentation and source file location for printing documentation about config variables.
     '''
-    __slots__ = ('name', 'doc', 'loc', 'cvar', 'default')
 
-    def __init__(self, name, /, default=UNSET, *, doc='', loc=1):
+    @classmethod
+    def define(self, fn=None, **kwargs):
+        def _wrap(fn):
+            sig = inspect.signature(fn)
+            return ConfigVar(kwargs.get('name',fn.__name__),
+                default = UNSET if (v:=next(iter(sig.parameters.items()))[1].default) is sig.empty else v,
+                doc = fn.__doc__,
+                type = str if (v:=sig.return_annotation) is sig.empty else v,
+                from_str = fn,
+            )
+        return _wrap if fn is None else _wrap(fn)
+
+
+    def __init__(self, name, /, default=UNSET, *, doc='', type=str, from_str=None, loc=1):
         if isinstance(loc, int):
             frame = sys._getframe(loc)
             loc = (frame.f_code.co_filename, frame.f_lineno)
@@ -46,6 +59,8 @@ class ConfigVar():
         self.name = nd[0]
         self.doc = doc
         self.loc = loc
+        self.type = type
+        self.from_str = type if from_str is None else from_str
         self.default = default
         self.cvar = contextvars.ContextVar(self.name, default=default)
     
@@ -64,13 +79,22 @@ class ConfigVar():
     def v(self, value):
         return self(value)
         
+    def set_str(self, sval):
+        return self.cvar.set(self.from_str(sval))
+
     def __call__(self, value):
         return self.cvar.set(value)
 
 
 
-target = ConfigVar('target The target that was used to set all of the configuration variables.', loc=('__builtin__',0))
+target = ConfigVar('target The target that was used to set all of the configuration variables.')
 
+@ConfigVar.define
+def verbosity(sval=0) -> int:
+    ''' This is an integer verbosity level.  Positive means more verbose, negative is less verbose, and zero is neutral.
+    Any output's verbosity will be adjusted by this amount automatically before getting streamed out.
+    '''
+    return int(sval)
 
 
 class Target():
@@ -99,14 +123,16 @@ class Env():
         return os.environ.get(f"{cli.prefix}{key}".upper())
     
     def __setattr__(self, key, value):
-        os.environ[f"{cli.prefix}{key}".upper()] = value
+        os.environ[f"{cli.prefix}{key}".upper()] = str(value)
 
     def load(self):
         import config
         for name in [k[len(cli.prefix):].lower() for k in os.environ if k.startswith(cli.prefix)]:
             try:
-                getattr(config, name)(getattr(self, name))
-            except: pass # Ignore unknown environment variables
+                getattr(config, name).set_str(getattr(self, name))
+            except:
+                if name == 'verbosity': verbosity.set_str(self.verbosity) # special treatment so that you don't have to import verbosity into config.py
+                pass # Ignore unknown environment variables
 
     def __iter__(self):
         import config

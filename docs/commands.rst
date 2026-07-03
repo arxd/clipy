@@ -11,7 +11,7 @@ The command line interface follows this generic pattern:
 
     [command <positional_argument>* <keyword_argument>*]+
 
-A command is defined by a Python function decorated with `@CLI <CLI>`.
+A command is defined by a Python function decorated with `@CLI.cmd <cmd>`.
 The function's parameters and the associated docstring fully define the command's interface and documentation.
 
 
@@ -20,7 +20,7 @@ Basic Example
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def hello(say, *, times__t=1):
         ''' Say something multiple times
 
@@ -79,7 +79,7 @@ Positional
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(a=3, /, banana__b='hi', *, carrot__c:int=None):
         ''' Foo
 
@@ -137,7 +137,7 @@ Bool
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(*, verbose__v=False, times__t:int=None):
         print(f"v={verbose__v}  t={times__t}")
 
@@ -182,7 +182,7 @@ Lists
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(a:int, b:list[float]=None, c=[]):
         print(f"a={a}  b={b}  c={c}")
 
@@ -210,7 +210,7 @@ Tuple
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(a:tuple[int,str], b=tuple[str], c=(1,2,3)):
         print(f"a={a}  b={b}  c={c}")
 
@@ -227,63 +227,81 @@ The number of values is determined by the type.
 If the tuple type specifies a single element type (e.g., ``tuple[bool]``), then any number of values of that type may be given.
 
 
+.. _sub_commands:
 
-Sub-Commands
+Sub-commands
 ==============
 
 A command may have sub-commands. 
-Sub-commands must be discoverable before execution starts, so they are given to the `@CLI <CLI>` decorator.
+
+Declaring Sub-commands
+-------------------------
+
+Sub-commands must be discoverable before execution starts, so they are given to the `@cmd <cmd>` decorator.
 
 The complete chain of commands is fully parsed before any commands are actually executed.
 By making the sub-command lookup deterministic we can provide better help and documentation support.
 Also, any command-line syntax errors in sub-commands are caught before anything is executed.
 
-You can pass an entire module, or a string module path, or even individual commands (`CommandDfn` objects).
+You can pass an entire module, a module path string, or even individual commands (`CommandDfn` objects) to the `@cmd <cmd>` decorator.
 
-By passing the module containing your commands as a string, it will be loaded only if a sub-command is actually called, which is generally preferred for efficiency.
+By passing the module containing your commands as a string, it will be loaded only if a sub-command is actually called, which is generally preferred for loading efficiency.
 
-Finally, you can also pass a callable.
-Using a callable allows you to take more control over the loading of sub-commands.
+For even more precise control over sub-commands, in addition to the above, you can also pass a callable to the `@cmd <cmd>` decorator.
 You might, for example, want to ensure that necessary packages are installed lazily.
 
 The callable will be given a string prefix (possibly empty) of a sub-command.
 The callable must return one of the following:
 
 - A list of zero or more matching `CommandDfn` commands.  If the prefix is empty, all commands should be returned.
-- A module (or string path) containing commands
+- A module (or module path string) containing commands (a superset of all the commands matching the given prefix).
+
+.. code-block:: python
+
+    import sub_module
+
+    @CLI.cmd
+    def baz(a, b):
+        return a+b
+
+    @CLI.cmd('..lazy.loaded', baz, sub_module)
+    def foo():
+        pass
 
 
-If a command takes an initial positional-only parameter whose name starts with an underscore, then the sub-command `Command` object will be passed to it.
-Otherwise, the command's return value is used to determine the default argument values passed to the sub-command.
+Calling Sub-commands
+---------------------
 
+You can opt-in to receive the sub-command `Command` object so that you can call it explicitly however you want.
+Or, you can let the sub-command get implicitly called with the result of the command.
 
 .. _explicit-control:
 
 Explicit Sub-command Control
 -----------------------------
 
-By explicitly receiving the sub-command `Command` object, you are responsible for calling it however you want.
+In order to opt-in for explicit control you set the ``sub`` parameter of the `@cmd <cmd>` decorator to the string name of the (:ref:`hidden <hidden-params>`) parameter that will receive the sub-command `Command` object.
+
+You are free to call the sub-command (`call()`, `call_async()`, `each()`, `each_async()`) however you like.
+If a sub-command was not given on the command line then you will get ``None`` instead of a `Command` object.
 
 .. code-block:: python
 
-    import sub_module
-
-    @CLI
-    def sub_marine(_sub, /,  a, b):
-        print(f"got: {_sub} {a} {b}")
+    @CLI.cmd
+    def baz(a:int, b=8):
         return a+b
 
-    @CLI('.lazy_loaded_module', sub_module, sub_marine)
-    def foo(_sub, /):
-        print(f"result: {_sub(3, b=4)}")
-
-The arguments passed when calling ``_sub(3, b=4)`` act as default values and may be overridden by arguments given from the command line.
+    @CLI.cmd(baz, sub='_sub')
+    def foo(_sub, z:int):
+        print(f"result: {z*(2 if _sub is None else _sub.call(3))}")
 
 .. code-block:: console
 
-    $ foo sub-marine 6
-    got: None 6 4
-    result: 10
+    $ foo 6
+    result: 12
+
+    $ foo 3 baz -b 7
+    result: 30
 
 
 .. _implicit-control:
@@ -291,30 +309,78 @@ The arguments passed when calling ``_sub(3, b=4)`` act as default values and may
 Implicit Sub-command Control
 -----------------------------
 
-If the command does not take an initial, :ref:`hidden <hidden-params>`, positional-only parameter, then the command's return value is used to determine the default argument values passed to the sub-command.
+If the command does not need explicit control of sub-command then it can be called implicitly (the default).
 
-In that case, the command is expected to return one of ``None``, ``*args``, ``**kwargs``, or ``*args, **kwargs``, to be given to the sub-command as default values.
+The ``sub`` decorator parameter, by default, is set to ``!`` which indicates that the return value of the command should be treated as a dictionary of kwargs that will be set on the sub-command as default argument values.
+Those returned kwargs will override the default arguments in the function declaration, but the command-line arguments given to the sub-command will override all.
+Returning ``None`` is equivalent to returning an empty dictionary.
 
 .. code-block:: python
 
-    @CLI
-    def sub_sandwich(*args, **kwargs):
-        print(f"args:{args} kwargs:{kwargs}")
+    @CLI.cmd
+    def baz(a:int, b=8):
+        return a+b
 
-    @CLI(sub_sandwich)
-    def foo():
-        return (3,4), dict(x=3)
+    @CLI.cmd(baz)
+    def foo(z:int):
+        return {'a':10*z} if z else None
 
 .. code-block:: console
 
-    $ foo sub-sandwich
-    args:(3,4) kwargs:{'x':3}
+    $ ./cli.py foo 0 baz 3
+    11
 
-    $ foo sub-sandwich -x 9
-    args:(3,4) kwargs:{'x':9}
+    $ ./cli.py foo 5 baz 1
+    9
 
-    $ foo sub-sandwich -y hello bar
-    args:('bar',) kwargs:{'x':3, 'y':'hello'}
+    $ ./cli.py foo 5 baz -b 6
+    56
+
+
+Instead of returning a dictionary of kwargs, you can return any value and have that value be given to a specific keyword parameter of the sub-command.
+Set ``sub`` to the parameter name followed by a question mark or exclamation mark.
+
+The exclamation mark ``param!`` indicates that a sub-command *must* be given.
+The question mark ``param?`` indicates that a sub-command does not need to be given.
+
+Note that just a ``?`` would indicate that we are returning a dictionary of kwargs, but it is not necessary to use a sub-command.
+The default is ``!`` which is a required sub-command with a dictionary of kwargs.
+
+
+
+If the command's decorator does not set the ``sub`` parameter (or sets it to None) then the command's return (or yielded) value will be given to the sub-command implicitly.
+There are two ways the return value can be given to the sub-command: as a dictionary of kwargs, or as a value given to a specified named parameter.
+
+
+.. code-block:: python
+
+    @CLI.cmd
+    def baz(a:int, b=8):
+        return a+b
+
+    @CLI.cmd(baz, 'a!')
+    def foo(z:int):
+        return 2*z
+
+    @CLI.cmd(baz, sub='b?')
+    def bar(z:int):
+        return 2*z
+
+
+.. code-block:: console
+
+    $ ./cli.py foo 3
+    Error: required sub-command
+
+    $ ./cli.py foo 3 baz
+    14
+
+    $ ./cli.py bar 21
+    42
+
+    ./cli.py bar 10 baz 3
+    23
+
 
 
 Generators
@@ -324,34 +390,33 @@ Commands may be defined as generator functions (normal or async).
 
 .. code-block:: python
 
-    @CLI
-    def ls(path):
-        yield from os.listdir(path)
+    @CLI.cmd
+    def lower(v):
+        return str(v).lower()
 
-    @CLI(ls)
-    def foo(_sub, /):
-        print([f.upper() for f in _sub()])
+    @CLI.cmd(upper, sub_required=False)
+    async def count(end=26):
+        for i in range(end):
+            yield chr(65+i)
+            await asyncio.sleep(1)
 
-    @CLI(ls)
-    def bar():
-        return '.'
-
-
-If :ref:`implicit sub-command control <implicit-control>` is used, then the sub-command can be iterated over in the usual way.
-
-.. code-block:: console
-    
-    $ ./cli.py foo ls .
-    ['CLI.PY', 'README.RST', ...]
-
-
-If :ref:`explicit sub-command control <explicit-control>` is used, then the command's results are collected into a list.
+When a generator is called using `call_sync()` or `call_async()` then its results are collected into a list and returned.
 
 .. code-block:: console
 
-    $ ./cli.py bar ls
-    ['cli.py', 'README.rst', ...]
-    
+    $ ./cli.py count 3
+
+    ['A', 'B', 'C']
+
+When a generator uses :ref:`implicit sub-command control <implicit-control>` then the sub-command is mapped over the generators results.
+The sub-command is called for each yielded parent value.
+
+.. code-block:: console
+
+    $ ./cli.py count 3 lower
+
+    ['a', 'b', 'c']
+
 
 
 
@@ -374,7 +439,7 @@ Since the trailing arguments are all captured, a command with ``*args`` cannot h
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(first=None, *files, verbose__v=False):
         print(f"first={first!r}  verbose={verbose__v}  files={files}")
 
@@ -414,7 +479,7 @@ A double dash ``--`` can be used to force the end of the current command's argum
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(a=False, **kwargs):
         print(f"a={a}  kwargs={kwargs}")
 
@@ -442,7 +507,7 @@ In order to pass an argument value that starts with a dash (e.g., ``-not-a-keywo
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(x:list, y:int):
         print(f"x={x}  y={y}")
 
@@ -475,11 +540,11 @@ This also applies to :ref:`*args and **kwargs <var-args>` parameters.
 
 .. code-block:: python
     
-    @CLI
+    @CLI.cmd
     def bar(_sub, /, q, **_kwargs):
         print(f"bar: sub={_sub}  q={q}  kwargs={_kwargs}")
 
-    @CLI(bar)
+    @CLI.cmd(bar)
     def foo(_sub, /, _x=1, y=2, _z=3, t=4):
         print(f"foo: x={_x}  y={y}  z={_z}  t={t}")
         _sub(10, r=11)
@@ -502,7 +567,7 @@ By adding a single trailing underscore to your command name or parameter name, y
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def break_(if_, else_):
         print(f"if={if_}  else={else_}")
 
@@ -521,7 +586,7 @@ More generally, a single dash skips that parameter, even if it is not a ``list``
 
 .. code-block:: python
 
-    @CLI
+    @CLI.cmd
     def foo(x=1, y=[2,3]):
         print(f"x={x}  y={y}")
     
@@ -549,5 +614,5 @@ Class Documentation
 
 .. autoclass:: libclipy.core.command.dfn.CommandDfn
 .. autoclass:: libclipy.core.command.command.Command
-.. autoclass:: libclipy.core.command.dfn.CLI
+.. autoclass:: libclipy.core.command.dfn.cmd
     

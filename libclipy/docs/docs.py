@@ -1,11 +1,11 @@
-import libclipy as CLI
+from libclipy import CLI
 from pathlib import Path
 
 DIST = Path('docs/_dist')
 
 
 
-@CLI.cmd
+@CLI.cmd()
 def view(section__s='', *, local__l=False):
     ''' Open the html documentation in the browser.
 
@@ -16,7 +16,7 @@ def view(section__s='', *, local__l=False):
             Don't pull, only view local documentation 
     '''
     ensure_docs()
-    if not local__l: Git(DIST).pull('--rebase')
+    if not local__l: Git(repo=DIST).pull('--rebase')
     section = find_section(section__s)
     if not section: raise UsageError(f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build")
         #build()
@@ -52,11 +52,11 @@ def build():
     
 
 
-@CLI.cmd
+@CLI.cmd()
 def push():
     ''' Overwrite the remote documentation with the current built documentation.
     '''
-    repo = Git(DIST)
+    repo = Git(repo=DIST)
     repo.add('-A')
     repo.commit('--amend', '-m', 'cli.py docs')
     repo.push('--force')
@@ -141,6 +141,7 @@ def docs():
 
 import os, sys, shutil
 #from config import Config
-from libclipy.tools.run import run, UsageError
+from libclipy.tools.run import run
+from libclipy.core.errors import UsageError
 from libclipy.tools.git import Git
-from libclipy import print
+

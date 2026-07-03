@@ -1,11 +1,12 @@
 import os, sys
-sys.path[0:0] = [os.path.abspath(x) for x in ['..', '../scripts/core/docs/ext']]
+sys.path[0:0] = [os.path.abspath(x) for x in ['..', '../libclipy/docs/ext']]
+import markdown_mermaid
 #from config import Config
 #cfg = Config()
 project = 'cfg.name'
 release = 'cfg.version'
 default_role = 'any'
-extensions = ['sphinx.ext.viewcode', 'sphinx.ext.autosummary', 'sphinx.ext.napoleon', 'myst_parser', 'sphinx.ext.autodoc', 'sphinxcontrib.mermaid', 'sphinx_markdown_builder']#, 'markdown_mermaid']
+extensions = ['sphinx.ext.viewcode', 'sphinx.ext.autosummary', 'sphinx.ext.napoleon', 'myst_parser', 'sphinx.ext.autodoc', 'sphinxcontrib.mermaid', 'sphinx_markdown_builder', 'markdown_mermaid']
 inc = {'README.rst', 'docs'}
 exclude_patterns = list(set(os.listdir('..')).difference(inc)) + ['docs/_*']
 html_theme = 'sphinx_rtd_theme'

@@ -1,11 +1,16 @@
+from ..core.errors import PrettyException
+
+
+class RunException(PrettyException):
+    def __init__(self, **kwargs):
+        for k,v in kwargs.items(): setattr(self, k, v)
 
 
 def _run_init(cmd, msg, env):
     if not isinstance(cmd, str): cmd = list(map(str, cmd))
-    if msg == True: msg = Text('Running...')
+    if msg == True: msg = 'Running...'
     if msg:
-        print.ln(msg, ['']*2, '   $ ', cmd if isinstance(cmd, str) else shlex.join(cmd))
-        print.stream.flush()
+        print(msg, '\n  $', cmd if isinstance(cmd, str) else shlex.join(cmd))
     if env:
         e = dict(os.environ)
         e.update(env)
@@ -13,14 +18,14 @@ def _run_init(cmd, msg, env):
     return cmd, env
     
 
-def exec(cmd, msg=True, env=None):
+def exec(cmd, *, msg=True, env=None):
     cmd, env = _run_init(cmd, msg, env)
     assert(isinstance(cmd, list)), f"Can't exec with a shell string"
     if env: os.execvpe(cmd[0], cmd, env)
     os.execvp(cmd[0], cmd)
 
 
-def run(cmd, msg=True, env=None, stdin=None, **kwargs):
+def run(cmd, *, msg=True, env=None, stdin=None, **kwargs):
     '''
     What to print to the terminal before running the command?
 
@@ -33,21 +38,24 @@ def run(cmd, msg=True, env=None, stdin=None, **kwargs):
         msg == None or msg == False
             <nothing>
 
-    The command produces three things: stdout, stderr, returncode.
-    
-    How should we handle stdout and stderr?
+    In order to decide what to return the special keyword arguments 'if_{code}' and 'or_else' are consulted.
+    The returncode is used choose the correct keyword argument and its value is used to control the output.
+    The values are a 3-tuple in string form '{stdout},{stderr},{action}'.
+
+    The first two elements (stdout and stderr) are one of the following values that decide how stdout and stderr should be formatted.
 
     ''     : Show it on the console
     'null' : Hide it
-    'json' : Parse it as json
+    'json' : Keep it and parse it as json
     'bin'  : Keep it as binary
     'utf8' : Keep it as utf8 text
     
-    What should be returned?
+    The last element (action) is what gets returned (or thrown).
 
-    '' : Nothing special, whatever we captured in stdout and stderr
+    '' : return stdout or stderr depending on which one was kept.  If they were both kept then a tuple (stdout,stderr) is returned.  If neither was kept then return None.
+    'code' : return the integer returncode
     'raise msg text' : Raise a RunException(msg="msg text", stdout, stderr, returncode)
-    'code' : Returncode
+
     '''
     cmd, env = _run_init(cmd, msg, env)
     if not kwargs: kwargs = {'if_0':',,'}
@@ -89,46 +97,4 @@ def run(cmd, msg=True, env=None, stdin=None, **kwargs):
     return None if len(ret)==0 else ret[0] if len(ret)==1 else tuple(ret)
 
 
-
-
-class PrettyException(Exception):
-    ''' This implements the pretty() method to show a pretty version of the exception.
-    
-    __str__ and __repr__ return normal, not-pretty, strings.
-    '''
-    def __init__(self, **kwargs):
-        for k,v in kwargs.items(): setattr(self, k, v)
-
-
-    def __str__(self):
-        #print = Printer.using(StringIO)(ascii=True, color=False)
-        if hasattr(self, 'msg'):
-            return self.msg
-            #print(self.msg)
-        else:
-            return repr(self)
-            #print(repr(self))
-        #return str(print).rstrip()
-
-
-    def __repr__(self):
-        s = f"{self.__class__.__name__}("
-        args = [f'{k}={v!r}' for k,v in self.__dict__.items()]
-        return s+ ', '.join(args) + ')'
-
-
-
-
-class UsageError(PrettyException):
-    def __init__(self, *msg, **kwargs):
-        super().__init__(msg=msg)
-        for k,v in kwargs.items(): setattr(self, k,v)
-
-
-
-class RunException(PrettyException):
-    pass
-
-
 import json, sys, shlex, os, subprocess
-from libclipy import print, Text, CLR, Pretty, Table

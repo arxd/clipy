@@ -1,4 +1,7 @@
 from collections import namedtuple
+from pathlib import Path
+from .sys_tool import SysTool
+from ..CLI import ConfigVar
 
 SEP = '89rbjw7HmBLE6KQfHKb9xNCw0lfyBkbwTc+DcCQM'
 EOL = 'ww+TSrnS3+mg5ogO4AdNjr7iCAUktezuHg77Lfwi'
@@ -6,12 +9,22 @@ GitLog = namedtuple('GitLog', ('hash', 'short_hash', 'parent_hash', 'author_name
 GitRef = namedtuple('GitRef', ('name', 'short', 'type', 'size', 'hash', 'kind', 'refid'))
 
 
-class Git():
-    sub_cmds = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
+class Git(SysTool):
+    sub_commands = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
+    version = ConfigVar('git_version The required git version', '2')
+    version_probe = r'^git version (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)$'
+    cmd = 'git'
+    
+
     def __init__(self, repo='.'):
         self.repo = os.path.abspath(repo)
 
 
+    def __str__(self):
+        return self.repo
+
+
+    @property
     def name(self):
         if not hasattr(self, '_name'):
             l = (self.config('--get', 'remote.origin.url', if_0='utf8,null,', msg=None, or_else=',null,') or '').strip()
@@ -81,7 +94,17 @@ class Git():
 
 
     def ls(self, *pattern, invert=False):
-        return self.ls_files(*(list(pattern) + (['--other'] if invert else [])), msg=None, if_0='utf8,,').splitlines()
+        return [Path(f) for f in self.ls_files(*(list(pattern) + (['--other'] if invert else [])), msg=None, if_0='utf8,,').splitlines()]
+
+
+    def grep(self, pattern, *args):
+        stdout = self('--no-pager', 'grep', '-n', '-z', '--untracked', *args, pattern, msg=None, if_0='bin,,', if_1='null,,')
+        if stdout is None: return
+        for line in stdout.split(b'\n')[:-1]:
+            file,lno,detail = line.split(b'\x00')
+            yield (file.decode('utf8'), int(lno), detail.decode('utf8'))
+        #print([line for line in lines])
+        #    print(line)#[[x.decode('utf8') for x in parts] for parts in l.split(b'\x00') for l in lines])
 
 
     def pull_rebase(self, *args, **kwargs):
@@ -108,20 +131,11 @@ class Git():
         self.checkout(cur)
         return f'{remote}/{name}'
 
-
-    def __call__(self, *args, **kwargs):
-        return run(['git', '-C', self.repo, *args], **kwargs)
-
-
-    def __getattr__(self, cmd):
-        if cmd not in self.sub_cmds: raise AttributeError(f"{cmd!r} is not in sub_cmds: {self.sub_cmds}")
-        return partial(self, cmd.replace('_','-'))
-
-
-    def __str__(self):
-        return self.repo
+    
+    def prepare_call(self, *cmd):
+        return (self.cmd, '-C', self.repo, *cmd)
+    
 
 
 import os
-from functools import partial
-from .run import run, UsageError
+from ..core.errors import UsageError

@@ -3,12 +3,11 @@
 import sys, re, os
 
 
-
 def ensure_environment(need, venv):
-    ''' Ensure the execution evironment is what our project needs.
+    ''' Ensure the execution environment is what our project needs.
     
     It ensures the currently running version of python matches the `need` regular expression.
-    If it doesn't match it attempts to install a compatable version using ``pyenv``.
+    If it doesn't match it attempts to install a compatible version using ``pyenv``.
 
     Next it makes sure we are running in the given `venv`.
     If `venv` is None then we are fine using the system python and nothing is done.
@@ -22,7 +21,7 @@ def ensure_environment(need, venv):
     need_re = re.compile(need+'$')
     have = "%s.%s.%s"%sys.version_info[:3]
     if need_re.match(have): return _ensure_venv(project_root, venv)
-# Nope, we aren't compatable
+# Nope, we aren't compatible
     print("Incompatible Python version\n")
     print("Have: \x1b[0;31m%s\x1b[0m"%have)
     print("Need: \x1b[0;33m%s\x1b[0m\n"%need)
@@ -35,7 +34,7 @@ def ensure_environment(need, venv):
     # The user does not have a compatible version installed
         version = _latest([v.strip() for v in run(['pyenv', 'install', '--list'], capture=True).split('\n') if need_re.match(v.strip())])
         if not version or run(['pyenv', 'install', version]) != 0:
-            _exit(51, "You need to manually install a compatable python version.")
+            _exit(51, "You need to manually install a compatible python version.")
 # Set the new version locally for the project
     run(['pyenv', 'local', version])
     print("Installed compatible python version: \x1b[0;33m%s\x1b[0m"%version)
