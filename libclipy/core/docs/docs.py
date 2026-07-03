@@ -16,14 +16,19 @@ def view(section__s='', *, local__l=False):
             Don't pull, only view local documentation 
     '''
     ensure_docs()
-    if not local__l: Git(repo=DIST).pull('--rebase')
+    if not local__l:
+        try:
+            Git(repo=DIST).pull('--rebase')
+        except:
+            print(f"Couldn't pull remote documentation.  Using local docs")
     section = find_section(section__s)
-    if not section: raise UsageError(f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build")
+    if not section:
+        raise UsageError(f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build")
         #build()
         #section = find_section(section__s)
         #assert(section), f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build"
     url = 'file://' + section
-    print.ln(f'Opening documentation in the browser~lang ja~ブラウザでドキュメントを開く', '...', ['']*2, url)
+    print(f'Opening documentation in the browser~lang ja~ブラウザでドキュメントを開く', '...', ['']*2, url)
     try: run(['open', '-a', 'Google Chrome', url])
     except:
         try: run(['open', '-a', 'Safari', url])
@@ -87,7 +92,7 @@ def ensure_docs():
     try:
         repo.worktree('add', DIST, 'docs', '-f')
     except:
-        print.ln(f"Creating docs branch")
+        print(f"Creating docs branch")
         gitignore = '* !/html/ !/html/** !/markdown/ !/markdown/** !.gitignore'.split(' ')
         repo.create_orphan_branch('docs', gitignore, remote='origin')
         repo.worktree('add', DIST, 'docs')
@@ -98,7 +103,7 @@ def ensure_docs():
 def cli_gen(outfolder):
     os.makedirs(outfolder, exist_ok=True)
     main = CLI.main()
-    print.ln("Generate cli.py documentation~lang ja~cli.pyドキュメントを生成する")
+    print("Generate cli.py documentation~lang ja~cli.pyドキュメントを生成する")
     create_file(main, outfolder, prefix=[main.name])
 
 

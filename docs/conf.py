@@ -1,10 +1,9 @@
 import os, sys
-sys.path[0:0] = [os.path.abspath(x) for x in ['..', '../libclipy/docs/ext']]
+sys.path[0:0] = [os.path.abspath(x) for x in ['..', '../libclipy/core/docs/ext']]
 import markdown_mermaid
-#from config import Config
-#cfg = Config()
-project = 'cfg.name'
-release = 'cfg.version'
+from config import version, name
+project = name
+release = version
 default_role = 'any'
 extensions = ['sphinx.ext.viewcode', 'sphinx.ext.autosummary', 'sphinx.ext.napoleon', 'myst_parser', 'sphinx.ext.autodoc', 'sphinxcontrib.mermaid', 'sphinx_markdown_builder', 'markdown_mermaid']
 inc = {'README.rst', 'docs'}

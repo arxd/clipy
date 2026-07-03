@@ -2,9 +2,13 @@ import socket, time, subprocess, sys, json
 from pathlib import Path
 from .sys_tool import SysTool
 from .make import Make
-from ..CLI import CLR, ConfigVar, cfg
+from ..CLI import CLR, config_var
 
-localhost_iap_port = ConfigVar('localhost_iap_port The default port used on the localhost when an IAP tunnel is opened to a remote VM', 2831)
+@config_var
+def localhost_iap_port(v=2831):
+    ''' The default port used on the localhost when an IAP tunnel is opened to a remote VM'''
+    return int(v)
+
 
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -21,7 +25,13 @@ def port_closed(port):
 class GCloud(SysTool):
     init_defaults = dict(project_id='', zone='')
     sub_commands = ['compute', 'services', 'projects']
-    version = ConfigVar('gcloud_version The required gcloud version', '511')
+    
+    @config_var
+    def version(v='511'):
+        ''' The desired gcloud version '''
+        return str(v)
+
+
     version_probe = r'^Google Cloud SDK (?P<v0>\d+).(?P<v1>\d+).(?P<v2>\d+)$'
     cmd = 'gcloud'
 
@@ -80,7 +90,7 @@ class IAPTunnel():
         
         for k,v in kwargs.items(): setattr(self, k, v)
         if not hasattr(self, 'zone'): self.zone = self.gcloud.zone
-        if self.port is None: self.port = cfg('localhost_iap_port', __name__)
+        if self.port is None: self.port = localhost_iap_port.v
 
 
     def exec(self):

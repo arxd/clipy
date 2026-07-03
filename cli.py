@@ -7,8 +7,6 @@
 import os
 # Set our project prefix
 prefix='CLIPY_'
-# Set the environment that the code is running in
-env = os.environ.get(prefix+'ENV', 'dev')
 
 if __name__ == '__main__':
     import sys
@@ -17,7 +15,7 @@ if __name__ == '__main__':
     # First make sure we are running a version of python compatible with this project.
     # If a specific pip package version changes, and thereby causes a package conflict with a different branch, change venv to a different subdirectory
     # You can also choose None if you don't need a virtual environment, and you want to rely on the system packages
-    ensure_environment(r'3.1[0-4].\w+$', 'v1' if env == 'dev' else None)
+    ensure_environment(r'3.1[0-4].\w+$', 'v1')
 
     from libclipy.main import main
     from libclipy.core.errors import PrettyException

@@ -1,5 +1,0 @@
-=====
-TODO
-=====
-
-* Flesh out docs

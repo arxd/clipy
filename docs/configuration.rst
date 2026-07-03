@@ -19,6 +19,25 @@ If there were a single config dictionary that held all of the configuration then
 
 The solution is to let the names live in the module namespace and then use the standard python ``import as`` mechanism deal with name conflicts.
 
+A variable is created at a global scope in the module that needs it.
+
+
+.. code-block:: python
+
+    from libclipy import CLI
+    
+    @CLI.config_var
+    def max_buffer_size(v=16):
+        ''' max_buffer_size This is the maximum size of the buffer '''
+        return int(v)
+    
+    def use_the_var():
+        buffer = [0] * max_buffer_size.v
+
+
+.. autoclass:: libclipy.core.config.ConfigVar
+
+
 Secrets
 ---------
 
@@ -53,15 +72,13 @@ Environment
 =============
 
 This is a broad term, and often used interchangeably with `targets <page-config>`, but it is a different concept in clipy.
-An environment is *where* cli.py is being executed and what it can import.
+An environment is *where* cli.py is being executed.
+The environment dictates things like what libraries and architecture-specific abilities are available.
 
 * Is it running in a development environment on your laptop?
 * Is it running in a docker container executing a specific tooling function?
 * Is it running on the production server or device?
-
-The environment determines which modules python has access to, as well as other things like network access.
-In a dev environment you might need a different set of modules from the prod environment.
-Are you running with a python venv, or using the system python?
+* Are you running with a python venv, or using the system python?
 
 Which modules are available determines which commands are executable in an environment.
 Because, obviously, if the command can't import the modules it needs, then it can't run.

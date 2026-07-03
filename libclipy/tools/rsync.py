@@ -1,5 +1,5 @@
 from .sys_tool import SysTool
-from ..CLI import ConfigVar
+from ..CLI import config_var
 
 class Rsync(SysTool):
     ''' Copy files to a remote machine accessible with ssh.
@@ -9,7 +9,11 @@ class Rsync(SysTool):
         rsync = Rsync().remote('user@remote:2222')
         rsync.sync('bob', 'file1.txt', 'folder/file2.txt', 'empty_folder/')
     '''
-    version = ConfigVar('rsync_version The required rsync version', '3')
+    @config_var
+    def version(v='3'):
+        ''' The desired version rsync '''
+        return str(v)
+    
     version_probe = r'^rsync\s+version\s+(?P<v0>\d+).(?P<v1>\d+).(?P<v2>\d+)'
     cmd = 'rsync'
 

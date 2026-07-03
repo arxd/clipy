@@ -1,4 +1,4 @@
-from .core.config import target, verbosity, cfg, ConfigVar, Target, env
+from .core.config import target, verbosity, env, config_var, Target, clipy_env
 from .core.command.dfn import cmd, pip
 from .core.command.param import ParamType, param_type
 

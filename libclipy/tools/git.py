@@ -1,7 +1,7 @@
 from collections import namedtuple
 from pathlib import Path
 from .sys_tool import SysTool
-from ..CLI import ConfigVar
+from ..CLI import config_var
 
 SEP = '89rbjw7HmBLE6KQfHKb9xNCw0lfyBkbwTc+DcCQM'
 EOL = 'ww+TSrnS3+mg5ogO4AdNjr7iCAUktezuHg77Lfwi'
@@ -11,18 +11,20 @@ GitRef = namedtuple('GitRef', ('name', 'short', 'type', 'size', 'hash', 'kind', 
 
 class Git(SysTool):
     sub_commands = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
-    version = ConfigVar('git_version The required git version', '2')
     version_probe = r'^git version (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)$'
     cmd = 'git'
     
+    @config_var
+    def version(v='2'):
+        ''' The desired config version for git '''
+        return str(v)
+
 
     def __init__(self, repo='.'):
-        self.repo = os.path.abspath(repo)
-
+        self.repo = Path(repo).resolve()
 
     def __str__(self):
-        return self.repo
-
+        return str(self.repo)
 
     @property
     def name(self):
@@ -127,13 +129,13 @@ class Git(SysTool):
             f.write('\n'.join(gitignore))
         self.add('.gitignore')
         self.commit('-m', f'{name} orphan branch')
-        self.push('-u', remote, name)
+        #self.push('-u', remote, name)
         self.checkout(cur)
         return f'{remote}/{name}'
 
     
     def prepare_call(self, *cmd):
-        return (self.cmd, '-C', self.repo, *cmd)
+        return (self.cmd, '-C', str(self.repo), *cmd)
     
 
 

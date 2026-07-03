@@ -53,7 +53,7 @@ class VerifiedTool(type):
     def verify(self, version=None):
         ''' This will be called once per `version` to verify the tool's existence and valid version
         '''
-        if version is None: version = None if self.version is None else (cfg('version', self) or None)
+        if version is None: version = None if self.version is None else (self.version.v or None)
         if self.version_probe is None:
             assert(version is None), f"A version {version!r} is being specified without a defined version_probe"
         else:
@@ -164,4 +164,4 @@ class SysTool(metaclass=VerifiedTool):
 from functools import partial
 import re
 from .run import run, exec as run_exec
-from ..CLI import CLR, cfg
+from ..CLI import CLR
