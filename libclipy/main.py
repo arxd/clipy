@@ -1,6 +1,4 @@
 from . import CLI
-from libclipy.tools.grep import grep
-
 
 @CLI.cmd()
 def new_(project, tool__t=[]):
@@ -18,15 +16,15 @@ def new_(project, tool__t=[]):
     dest.mkdir()
     def _cp(files):
         for f in [Path(f) for f in files]:
-            if f.name.startswith('_test'): return
+            if f.name.startswith('_'): continue
             d = dest/(f.with_suffix('') if f.suffix == '.tmpl' else f)
             d.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(f, d)
 # Copy files
-    print(Git().ls('libclipy/core'))
-    _cp(Git().ls('libclipy/core'))
+    _cp(list(Git().ls('libclipy/core')))
+    _cp(list(Git().ls('libclipy/docs')))
     _cp(f"libclipy/tools/{f}" for f in ['__init__.py', 'grep.py', 'sys_tool.py', 'run.py', 'git.py'])
-    _cp(['libclipy/main.py.tmpl', 'cli.py', 'config.py', 'README.rst.tmpl', '.gitignore.tmpl'])
+    _cp(['libclipy/main.py.tmpl', 'libclipy/CLI.py', 'cli.py', 'config.py', 'README.rst.tmpl', '.gitignore.tmpl'])
     _cp(f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py'])
 # Init git
     git = Git(repo=dest)
@@ -66,7 +64,7 @@ def diff(project):
 
 
 
-@CLI.cmd(new_, diff, grep, '.docs', 'libclipy.test_cli', need=CLI.pip('PyYAML'))
+@CLI.cmd(new_, diff, 'libclipy.tools.grep', 'libclipy.core.docs', 'libclipy.test_cli', need=CLI.pip('PyYAML'))
 def main(*, target__t=None, verbose__v=False, quiet__q=False):
     ''' The universal command line interface for all functionality contained in this project.
 

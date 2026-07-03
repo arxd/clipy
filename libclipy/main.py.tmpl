@@ -1,8 +1,6 @@
 from . import CLI
-from libclipy.tools.grep import grep
 
-
-@CLI.cmd(grep, '.docs', 'libclipy.test_cli', need=CLI.pip('PyYAML'))
+@CLI.cmd(grep, 'libclipy.tools.grep', 'libclipy.core.docs', 'libclipy.test_cli', need=CLI.pip('PyYAML'))
 def main(*, target__t=None, verbose__v=False, quiet__q=False):
     ''' The universal command line interface for all functionality contained in this project.
 
