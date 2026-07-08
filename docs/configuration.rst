@@ -5,88 +5,127 @@ Configuration
 ==================
 
 Any function needs parameters.
-There are explicit parameters defined for the function, but there are also ambient parameters (global variables) that the function can use.
+There are explicit parameters defined for the function, but there are also ambient parameters (global variables) that the function has access to.
 
-To ease cognitive load, these global parameters should be constant at runtime.
+These ambient values have various levels of mutability and configurability.
 
-A `target` is in charge of giving them their initial value.
+1. Constant:  Example, ``name``, ``version``.  These are defined in ``cli.py`` and are the same across `target`s and `system`s.
+    To change them you need to change the source code.
 
-Variables 
-============
+2. Environment variables:  These have the ability to be set at the OS environment level so they feel more like constants (semi-constant), even though they have runtime-mutability.
+    Their limited storage capacity, string-type, and flat namespace are inconvenient.
+    Their main benefit is that they carry over to sub-command processes.
 
-Each variable needs a name, but what about namespacing if two unrelated packages want to use the same variable name?
-If there were a single config dictionary that held all of the configuration then there would be namespace issues.
-
-The solution is to let the names live in the module namespace and then use the standard python ``import as`` mechanism deal with name conflicts.
-
-A variable is created at a global scope in the module that needs it.
-
-
-.. code-block:: python
-
-    from libclipy import CLI
-    
-    @CLI.config_var
-    def max_buffer_size(v=16):
-        ''' max_buffer_size This is the maximum size of the buffer '''
-        return int(v)
-    
-    def use_the_var():
-        buffer = [0] * max_buffer_size.v
-
-
-.. autoclass:: libclipy.core.config.ConfigVar
-
-
-Secrets
----------
-
-No secret (passwords, keys) should be stored in configuration variables.  They should be stored in files (in the vault)
-and the file path should be given in a configuration variable.  One text file for each variable.  Don't put them
-all together in one json file.
-
-``vault/config.py`` is not really a secret.  It just isn't generically applicable to the application.  Semi-secret.
+3. `ConfigVar`:  These are python's context-aware `ContextVar` objects.  They have proper namespace separation and any python type.  The downside is that they don't survive across to sub-command processes.
 
 
 
 .. _target:
 
-Targets
-=========
+Target
+========
 
-Configuration values are grouped into **targets**.  A target is a function that sets some configuration
-values.  Targets are defined with the ``@Config.target`` annotation.  There are three locations where targets
-can be defined:
+A target is a certain configuration of `ConfigVar`s for certain workflows or deployment environments such as staging, or production.
+The actual target name is set as an environment variable and can be changed more dynamically as a parameter to cli.py. ``./cli.py -t staging ...`
 
-* ``config.py``  This is for deployment agnostic targets like ``local`` and ``test``
-* ``local/config.py``  This is for defining custom targets that can be used for testing/debugging but won't be pushed to git.
-* ``vault/config.py``  Targets in here are only relevant for deployments like ``prod`` and ``client``
-
-Targets can be chained ``local.sub1``, ``local.sub1.sub2``.  
-The target functions are just called in order so subsequent targets can override variables from the parents.
-
-Set the target with ``-t`` when calling `cli`.
+In practice, a target is just a function defined in cli.py and decorated with `@Target() <Target.__new__>`
 
 
-Environment
-=============
+.. autoclass:: libclipy.core.config.Target
+    :members: __call__
 
-This is a broad term, and often used interchangeably with `targets <page-config>`, but it is a different concept in clipy.
-An environment is *where* cli.py is being executed.
-The environment dictates things like what libraries and architecture-specific abilities are available.
 
-* Is it running in a development environment on your laptop?
+
+.. _system:
+
+System
+=======
+
+A system is *where* cli.py is being executed.
+The system dictates things like what libraries and architecture-specific abilities are available.
+
+* Is it running on your development laptop?
 * Is it running in a docker container executing a specific tooling function?
 * Is it running on the production server or device?
-* Are you running with a python venv, or using the system python?
 
-Which modules are available determines which commands are executable in an environment.
-Because, obviously, if the command can't import the modules it needs, then it can't run.
+Which modules are available determines which commands are executable in a system (if the command can't import the modules it needs, then it can't run).
 
 There is a distinction to be made between the ability to import a command, and run a command.
-Even if you can't run a command (because of a missing libary), it is helpful to be able to import the command so that you can read, and display, its help documentation.
-The local/dev environment is where the user interacts dynamically with cli.py, so in that environment, all commands need to be importable (even if not runnable) so that documentation can be generated.
-In other environments, like production, it may be fine if you can't import all commands, since only a subset of the commands may be used.
+Even if you can't run a command (because of a missing library), it is helpful to be able to import the command so that you can read, and display, its help documentation.
+The local/dev system is usually where the user is interactively calling cli.py, so all commands need to be importable (even if not runnable) so that documentation can be generated.
+For other systems, like production, it may be fine if you can't import all commands, since only a subset of the commands may be used.
 
 
+
+Environment Variables
+=======================
+
+Environment variables for the project are given a project-specific prefix defined in cli.py, ``env = Env(prefix,...)``.
+These should be thought of as high-level semi-constant (bashrc) configuration.
+To overcome the limitation of only being able to store short strings, and to benefit from the ability to carry configuration variables over to sub-command processes, private variables are used.
+
+A private environment variable is one that starts with an underscore, ``Env('MY_', _private=(1,2))``.
+When set with a value, private variables are not actually put in the os environment.
+They are transferred to sub-command processes via a pipe, so they can be any pickleable type.
+
+
+.. autoclass:: libclipy.core.venv.Env
+
+
+
+ConfigVar 
+============
+
+Environment variables share a flat namespace, so they must rely on name-prefix based namespacing.
+A better solution is to let the names live in the native module namespace and then use the standard python ``import as`` mechanism deal with name conflicts.
+
+A `ConfigVar` variable is created at a global scope in the module that created the need for it.
+
+
+.. code-block:: python
+
+    from cli import ConfigVar
+
+    max_size = ConfigVar('max_size The maximum size of the buffer', default=16)
+
+    @ConfigVar()
+    def a_pair(v='a b'):
+        ''' A pair of important configuration values '''
+        return v.split(' ')
+    
+    def use_the_var():
+        buffer = a_pair.v * max_size.v
+
+
+.. autoclass:: libclipy.core.config.ConfigVar
+    :members: __call__
+
+
+
+Secrets
+---------
+
+No secret (passwords, keys) should be stored in configuration variables.  They should be stored in files (in the `vault`)
+and the file path should be given in a configuration variable.  One text file for each variable.
+Don't put them all together in one json file.
+
+
+
+Virtual Environment
+-----------------------
+
+Each `Command` has the option of defining its own python virtual environment requirements.
+The virtual environment configuration can be set on the command with a decorator
+
+.. code-block:: python
+
+    @Venv(python='3.10 3.11', requirements='numpy matplotlib', system_packages=True, system='dev prd')
+    @Command()
+    def foo():
+        ...
+
+If a `Venv` is not given then the parent command's environment is used.
+
+.. autoclass:: libclipy.core.venv.Venv
+    :members: __call__
 

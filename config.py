@@ -1,8 +1,0 @@
-from libclipy.CLI import Target
-
-name = "clipy"
-version = "0.0.1"
-
-@Target.define(default='dev')
-def local():
-    pass

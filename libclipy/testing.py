@@ -4,7 +4,8 @@ import os, sys, json
 # We want to run the coverage and pytest in a separate process so that it has a clean environment to see all imports
 if __name__ == '__main__':
     import coverage, pytest
-    sys.path[0] = os.getcwd()
+    sys.path.insert(0, os.environ['_CLIPY_ROOT'])
+    os.chdir(os.environ['_CLIPY_ROOT'])
     args = json.loads(sys.argv[1])
     #from pyutil.core.cli_util import ClipyLogger, ClipyLogFilter
     #logging.setLoggerClass(ClipyLogger)
@@ -24,9 +25,10 @@ if __name__ == '__main__':
 
 
 
-from libclipy import CLI
+from cli import Command, Venv
 
-@CLI.cmd(need=CLI.pip('pytest coverage pytest-asyncio pytest-timeout'))
+@Venv(requirements='pytest coverage pytest-asyncio pytest-timeout')
+@Command()
 def test(spec=None, /, *, verbose__v=False, coverage__c=False):
     ''' Run all unit tests
 
@@ -40,6 +42,7 @@ def test(spec=None, /, *, verbose__v=False, coverage__c=False):
             Open coverage data in the browser
     '''
     from functools import reduce
+    from cli import env
     args = [['libclipy']]
     args += reduce(lambda a,b:a+b, [['--ignore', x] for x in os.listdir('.') if os.path.isdir(x) and x not in args[0]])
     pytest_ini = dict(
@@ -50,14 +53,16 @@ def test(spec=None, /, *, verbose__v=False, coverage__c=False):
         log_format = '%(lvl)s %(message)s%(names)s %(rloc)s%(obj)s',
     )
     for k,v in pytest_ini.items(): args += ['-o', f'{k}={v}']
-    if verbose__v: args.append('-'+'v'*int(verbose__v))
+    #if verbose__v: args.append('-'+'v'*int(verbose__v))
+    if env.verbosity > 0: args.append('-'+'v'*env.verbosity)
     args.append('--capture=fd')
-    args.append(f"--show-capture={'all' if verbose__v else 'log'}")
+    args.append(f"--show-capture={'all' if env.verbosity > 0 else 'log'}")
     args.append('--maxfail=1')
+    args.append('--import-mode=importlib')
     if spec: args.append(spec)
 # run pytest.main in a separate process (Because it needs it's own event loop and a clean module load)
-    from libclipy.core.setup import run
-    if (r:=run([sys.executable, 'libclipy/test_cli.py', json.dumps(args)])): sys.exit(r)
+    from libclipy.tools.run import run
+    if (r:=run([sys.executable, '-I', 'libclipy/testing.py', json.dumps(args)])): sys.exit(r)
     if coverage__c:
         url = 'local/coverage/index.html'
         try: run(['open', '-a', 'Google Chrome', url])

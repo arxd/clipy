@@ -1,26 +1,6 @@
-from . import CLI
+from libclipy import Command
 
-
-@CLI.cmd('libclipy.tools.grep', 'libclipy.core.docs.docs', 'libclipy.test_cli', need=CLI.pip('PyYAML'), sub='?')
-def main(*, version=False, target__t=None, verbose__v=False, quiet__q=False):
-    ''' The universal command line interface for all functionality contained in this project.
-
-    Parameters:
-        --version
-            Print the program version and exit
-        --target <target>, -t <target>
-            Set the target, overriding the environment variable.
-        --verbose, -v
-            Set the output to be more verbose.
-            Use this flag more than once ``-vvv`` to become more and more verbose.
-        --quiet, -q
-            The opposite of verbose.  Can be used repeatedly.
-    '''
-    if version:
-        from config import name, version
-        print(f"{name} {version}")
-        return
-    from libclipy.core.config import initialize_config_vars
-    if target__t is not None: CLI.clipy_env.target = target__t
-    if verbose__v or quiet__q: CLI.clipy_env.verbosity = int(verbose__v) - int(quiet__q)
-    initialize_config_vars()
+@Command()
+def hello(name):
+    ''' Hello World! '''
+    return f"Hello {name}"

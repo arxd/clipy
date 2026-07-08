@@ -1,11 +1,11 @@
-import shutil
-from . import CLI
+import shutil, cli
+from libclipy import Command
 from pathlib import Path
 
 
 class Project():
     def __init__(self, path='.'):
-        from libclipy.tools.git import Git 
+        from libclipy.tools import Git 
         self.git = Git(repo=Path(path).resolve())
 
     def __str__(self):
@@ -15,7 +15,7 @@ class Project():
         return str(self) == str(other)
     
     def copy_here(self, path, src):
-        ''' copy a file from this project to the given project '''
+        ''' copy a file `path` from the `src` project to this project '''
         d = self.git.repo/(path.with_suffix('') if path.suffix == '.tmpl' else path)
         d.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(src.git.repo/path, d)
@@ -23,10 +23,11 @@ class Project():
     def core_files(self, tools=None):
         if tools == 'all': tools = ['gcloud', 'rsync']
         tools = [f'{f}.py' for f in (tools or [])]
-        all = ['libclipy/main.py.tmpl', 'libclipy/CLI.py', 'libclipy/test_cli.py', 'cli.py', 'config.py', 'README.rst.tmpl', '.gitignore.tmpl']
+        all = ['cli.py', 'README.rst.tmpl', '.gitignore.tmpl']
+        all += [f"libclipy/{f}" for f in ['main.py.tmpl', 'grep.py', 'hide.py', 'testing.py', '__init__.py']]
         all += self.git.ls('libclipy/core')
         all += self.git.ls('libclipy/docs')
-        all += [f"libclipy/tools/{f}" for f in tools + ['__init__.py', 'grep.py', 'sys_tool.py', 'run.py', 'git.py']]
+        all += [f"libclipy/tools/{f}" for f in tools + ['__init__.py', 'sys_tool.py', 'run.py', 'git.py']]
         all += [f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py']]
         return [Path(f) for f in all]
 
@@ -36,28 +37,37 @@ class Project():
 
 
 
-
 class Projects(list):
     def __init__(self):
-        with open('local/projects') as f:
-            super().__init__([Project(p) for p in f.readlines()])
+        try:
+            with open(cli.env.work/'projects') as f:
+                super().__init__([Project(p) for p in f.readlines()])
+        except:
+            pass
 
     def ensure(self, p):
         if p not in self: self.append(p)
         self.save()
 
     def save(self):
-        with open('local/projects', 'w') as f:
+        with open(cli.env.work/'projects', 'w') as f:
             f.write(''.join(f"{p}\n" for p in self))
 
 
 
-@CLI.cmd()
+@Command()
+def xxx():
+    return {'a':3}
+
+
+@Command()
 def new_(project, tool__t=[]):
     ''' Create a new project
 
     Parameters:
-        --tool <name>, -t <name>
+        <project_path>
+            A path to the new project root
+        --tool -t [tool_name]
             We need this tool from tools
     '''    
     clipy = Project()
@@ -75,9 +85,14 @@ def new_(project, tool__t=[]):
 
 
 
-@CLI.cmd()
+@Command()
 def diff(project):
     ''' Compare the files in this reference implementation to the files in a derived project
+    
+    Parameters:
+        <project>
+            The path to the project to compare against.
+            If you give just the project name then the local/projects file will be searched to find the path.
     '''
     import os, shutil
     from libclipy.tools.run import run
@@ -99,29 +114,3 @@ def diff(project):
         c = input('Make changes to the (p)roject file or the (r)eference clipy file? ')
         if c == 'p': shutil.copy(clipy.file(f), project.file(f))
         if c == 'r': shutil.copy(project.file(f), clipy.file(f))
-
-
-
-@CLI.cmd(new_, diff, 'libclipy.tools.grep', 'libclipy.core.docs.docs', 'libclipy.test_cli', need=CLI.pip('PyYAML'), sub='?')
-def main(*, version=False, target__t=None, verbose__v=False, quiet__q=False):
-    ''' The universal command line interface for all functionality contained in this project.
-
-    Parameters:
-        --version
-            Print the program version and exit
-        --target <target>, -t <target>
-            Set the target, overriding the environment variable.
-        --verbose, -v
-            Set the output to be more verbose.
-            Use this flag more than once ``-vvv`` to become more and more verbose.
-        --quiet, -q
-            The opposite of verbose.  Can be used repeatedly.
-    '''
-    if version:
-        from config import name, version
-        print(f"{name} {version}")
-        return
-    from libclipy.core.config import initialize_config_vars
-    if target__t is not None: CLI.clipy_env.target = target__t
-    if verbose__v or quiet__q: CLI.clipy_env.verbosity = int(verbose__v) - int(quiet__q)
-    initialize_config_vars()

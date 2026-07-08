@@ -1,18 +1,14 @@
 from ..errors import PrettyException
 
 
-class CtlCException(PrettyException):
-    def pretty(self):
-        print('')
-
-
 class CommandError(PrettyException):
     def __init__(self, **kwargs):
-        for k,v in kwargs.items(): setattr(self, k,v)
+        for k,v in kwargs.items(): setattr(self, k, v)
 
     def pretty(self):
-        print(str(self))
-        print("\nError: Run with -h or --help for additional documentation for this command.\n")
+        yield from str(self).split('\n')
+        yield ""
+        yield "Error: Run with -h or --help for additional documentation for this command."
 
 
 
@@ -92,13 +88,13 @@ class AmbiguousSubCommand(BindError):
 class HelpWanted(BindError):
     def pretty(self):
         import inspect
-        subs = list(self.cmd.__class__.sub_commands())
-        subs = [(str(s), (s.__doc__ or '').split('\n')[0].strip()) for s in subs]
+        from ..pretty import CLR
+        subs = sorted(list(type(self.cmd).sub_commands()))
+        subs = [(s.name, (s.__doc__ or '').split('\n')[0].strip()) for s in subs]
         w = max(0,0,*[len(c[0]) for c in subs])
-        for s in subs:
-            print(f"  * {s[0]}{' '*(w-len(s[0]))}  {s[1]}")
-        if subs: print('')
-        print(inspect.cleandoc(self.cmd.__doc__ or ''))
+        yield from [f"  * {CLR.y}{s[0]}{CLR.x}{' '*(w-len(s[0]))}  {s[1]}" for s in subs]
+        if subs: yield ''
+        yield from inspect.cleandoc(self.cmd.__doc__ or '').split('\n')
 
 
 class SubRequired(BindError):

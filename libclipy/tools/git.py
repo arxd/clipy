@@ -1,7 +1,9 @@
+import os
 from collections import namedtuple
 from pathlib import Path
+from libclipy import UsageError, ConfigVar
 from .sys_tool import SysTool
-from ..CLI import config_var
+
 
 SEP = '89rbjw7HmBLE6KQfHKb9xNCw0lfyBkbwTc+DcCQM'
 EOL = 'ww+TSrnS3+mg5ogO4AdNjr7iCAUktezuHg77Lfwi'
@@ -12,13 +14,8 @@ GitRef = namedtuple('GitRef', ('name', 'short', 'type', 'size', 'hash', 'kind', 
 class Git(SysTool):
     sub_commands = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
     version_probe = r'^git version (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)$'
-    cmd = 'git'
-    
-    @config_var
-    def version(v='2'):
-        ''' The desired config version for git '''
-        return str(v)
-
+    cmd = ConfigVar('git_path The path to the git executable', default='git')
+    version = ConfigVar('git_version The desired config version for git', default='2')
 
     def __init__(self, repo='.'):
         self.repo = Path(repo).resolve()
@@ -104,9 +101,7 @@ class Git(SysTool):
         if stdout is None: return
         for line in stdout.split(b'\n')[:-1]:
             file,lno,detail = line.split(b'\x00')
-            yield (file.decode('utf8'), int(lno), detail.decode('utf8'))
-        #print([line for line in lines])
-        #    print(line)#[[x.decode('utf8') for x in parts] for parts in l.split(b'\x00') for l in lines])
+            yield (file.decode(), lno.decode(), detail.decode())
 
 
     def pull_rebase(self, *args, **kwargs):
@@ -135,9 +130,4 @@ class Git(SysTool):
 
     
     def prepare_call(self, *cmd):
-        return (self.cmd, '-C', str(self.repo), *cmd)
-    
-
-
-import os
-from ..core.errors import UsageError
+        return (self.cmd.v, '-C', str(self.repo), *cmd)

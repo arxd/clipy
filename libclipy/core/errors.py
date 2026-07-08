@@ -15,7 +15,7 @@ class PrettyException(Exception):
         return s+ ', '.join(args) + ')'
     
     def pretty(self):
-        print(str(self))
+        yield from str(self).split('\n')
 
 
 

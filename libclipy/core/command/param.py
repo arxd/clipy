@@ -1,4 +1,6 @@
 import types
+from .errors import ParseError
+
 
 def _is_kw(s):
     if not s or s[0] != '-': return False
@@ -9,7 +11,7 @@ def _is_kw(s):
 class Param():
     ''' A parameter signature (name, type, default_value, positional/keyword) of a `Command`.
     '''
-    unset = type('unset',tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: False})()
+    unset = type('Unset', tuple(), {'__repr__':lambda _:'-', '__bool__':lambda _:False, '__reduce__':lambda _:(getattr, (Param, 'unset'))})()
 
     __slots__ = ('name', 'type', 'idx', 'is_kw', 'default')
 
@@ -70,10 +72,26 @@ class ParamType():
                 return composite(List, *subs)
             return Str
         return _find_type(k)
+    
 
+    def __new__(self, *_):
+        ''' You can't create instances of ParamType, only its subclasses.
+        
+        Instead, calling ``ParamType(...)`` serves as a decorator to a function that returns a subclass of ParamType.
+        
+        Parameters:
+            name
+                An alternate
+
+        '''
+        if self is not ParamType: return super().__new__(self)
+        def _wrap(fn):
+            return type(fn.__name__, (ParamType,), {'simple_parse':fn})
+        return _wrap
+    
 
     def __str__(self):
-        return type(self).name
+        return type(self).__name__.lower()
 
 
     def __call__(self, *args):
@@ -111,14 +129,11 @@ class Composite(ParamType):
         self.subs = subs or [Str()]
 
     def __str__(self):
-        return f"{type(self).name}[{','.join(type(s).name for s in self.subs)}]"
+        return f"{super().__str__()}[{','.join(str(s) for s in self.subs)}]"
 
 
 
 class List(Composite):
-
-    name = 'list'
-
     def parse(self):
         v = []
         i = 0
@@ -131,16 +146,8 @@ class List(Composite):
 
 
 
-def param_type(name):
-    def _wrap(fn):
-        return type(fn.__name__, (ParamType,), {'simple_parse':fn, 'name':name})
-    if isinstance(name, str): return _wrap
-    fn, name = name, None
-    return _wrap(fn)
 
-
-
-@param_type('int')
+@ParamType()
 def Int(self, sval, _):
     def _parse(v):
         if v.lower().startswith('0x'): return int(v, 16)
@@ -155,8 +162,6 @@ def Int(self, sval, _):
 
 class Tuple(Composite):
 
-    name = 'tuple'
-
     def simple_parse(self, sval, kw):
         assert(not kw)
         svals = sval.split(',')
@@ -168,13 +173,13 @@ class Tuple(Composite):
 
 
 
-@param_type('float')
+@ParamType()
 def Float(self, sval, _):
     return float(sval)
 
 
 
-@param_type('str')
+@ParamType()
 def Str(self, sval, kw):
     assert(not kw)
     return sval
@@ -182,8 +187,6 @@ def Str(self, sval, kw):
 
 
 class Bool(ParamType):
-
-    name = 'bool'
 
     def simple_parse(self, sval, kw):
         names = ['true','t','yes','y','on','enable',  'false','f','no','n','off','disable']
@@ -225,7 +228,3 @@ def composite(sup, *subs):
     def _fn():
         return sup(*[s() for s in subs])
     return _fn
-
-
-
-from .errors import ParseError

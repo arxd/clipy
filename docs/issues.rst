@@ -1,10 +1,12 @@
+.. _page-issues:
+
 ========
 Issues
 ========
 
-Missing functionality
-----------------------
-
+* ./cli.py is showing the full depth of commands
+* logging / logger class
+* env passed through dict
 * pyml
 
   * print/log object streaming
@@ -12,14 +14,10 @@ Missing functionality
   * docstring parsing
 
 * vault
-* generator commands
+* async Venv.each_async()
+* async generator commands
+* test-file specific venv
 
+  * consolidate the different test runs into a single coverage report
 
-venv building
-----------------
-
-We don't want to needlessly build a venv and install tools for simple commands that don't need anything (docs view).
-
-We do want to ensure a consistent locked venv for certain environments.
-
-We need to collect package requirements per-command
+* Maybe make the initialization code of entry_point more flexable (override-able?)

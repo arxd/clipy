@@ -2,13 +2,10 @@ import socket, time, subprocess, sys, json
 from pathlib import Path
 from .sys_tool import SysTool
 from .make import Make
-from ..CLI import CLR, config_var
+from libclipy import ConfigVar
+from libclipy.core.pretty import CLR
 
-@config_var
-def localhost_iap_port(v=2831):
-    ''' The default port used on the localhost when an IAP tunnel is opened to a remote VM'''
-    return int(v)
-
+localhost_iap_port = ConfigVar('localhost_iap_port The default port used on the localhost when an IAP tunnel is opened to a remote VM', default=2831)
 
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -25,16 +22,9 @@ def port_closed(port):
 class GCloud(SysTool):
     init_defaults = dict(project_id='', zone='')
     sub_commands = ['compute', 'services', 'projects']
-    
-    @config_var
-    def version(v='511'):
-        ''' The desired gcloud version '''
-        return str(v)
-
-
+    cmd = ConfigVar('gcloud_path The path to the gcloud executable', default='gcloud')
+    version = ConfigVar('gcloud_version The desired config version for gcloud', default='511')
     version_probe = r'^Google Cloud SDK (?P<v0>\d+).(?P<v1>\d+).(?P<v2>\d+)$'
-    cmd = 'gcloud'
-
 
     @classmethod
     def install_help_generic(self):

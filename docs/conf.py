@@ -1,7 +1,7 @@
 import os, sys
-sys.path[0:0] = [os.path.abspath(x) for x in ['..', '../libclipy/core/docs/ext']]
+sys.path[0:0] = [os.path.abspath(x) for x in ['..', '../libclipy/docs/ext']]
 import markdown_mermaid
-from config import version, name
+from cli import version, name
 project = name
 release = version
 default_role = 'any'

@@ -1,4 +1,5 @@
-from ..core.errors import PrettyException
+import json, sys, shlex, os, subprocess
+from libclipy import PrettyException
 
 
 class RunException(PrettyException):
@@ -17,12 +18,6 @@ def _run_init(cmd, msg, env):
         env = e
     return cmd, env
     
-
-def exec(cmd, *, msg=True, env=None):
-    cmd, env = _run_init(cmd, msg, env)
-    assert(isinstance(cmd, list)), f"Can't exec with a shell string"
-    if env: os.execvpe(cmd[0], cmd, env)
-    os.execvp(cmd[0], cmd)
 
 
 def run(cmd, *, msg=True, env=None, stdin=None, **kwargs):
@@ -95,6 +90,3 @@ def run(cmd, *, msg=True, env=None, stdin=None, **kwargs):
     if codes[2] == 'code':
         ret.append(code)
     return None if len(ret)==0 else ret[0] if len(ret)==1 else tuple(ret)
-
-
-import json, sys, shlex, os, subprocess

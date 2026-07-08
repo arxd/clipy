@@ -1,11 +1,13 @@
-from libclipy import CLI
+import os, sys, shutil
 from pathlib import Path
+from libclipy import Command, Venv, UsageError
+from libclipy.tools import run, Git
+
 
 DIST = Path('docs/_dist')
 
 
-
-@CLI.cmd()
+@Command()
 def view(section__s='', *, local__l=False):
     ''' Open the html documentation in the browser.
 
@@ -37,7 +39,8 @@ def view(section__s='', *, local__l=False):
             webbrowser.open(url, new=2)
 
 
-@CLI.cmd(need=CLI.pip('sphinx-rtd-theme sphinxcontrib-mermaid sphinx-markdown-builder myst-parser Pygments'))
+@Venv(requirements='sphinx-rtd-theme sphinxcontrib-mermaid sphinx-markdown-builder myst-parser Pygments')
+@Command()
 def build():
     ''' Build the documentation.
     '''
@@ -57,7 +60,7 @@ def build():
     
 
 
-@CLI.cmd()
+@Command()
 def push():
     ''' Overwrite the remote documentation with the current built documentation.
     '''
@@ -135,18 +138,3 @@ def create_file(cmd, outfolder, prefix=[]):
         for name in sorted(subs):
             write_cmd(subs[name], f, prefix + [name])
             if subs[name].sub_module_paths: create_file(subs[name], outfolder, prefix + [name])
-
-
-
-@CLI.cmd(build, view, push)
-def docs():
-    ''' View/build documentation
-    '''
-
-
-import os, sys, shutil
-#from config import Config
-from libclipy.tools.run import run
-from libclipy.core.errors import UsageError
-from libclipy.tools.git import Git
-

@@ -130,10 +130,10 @@ class PureFn():
         
     '''
     def __init__(self, fn, cache, **kwargs):
-        
+        pass
         
 
-class IAP(Dep):
+class IAP(DepNode):
     ''' This is an open IAP tunnel to a VM instance
     '''
     def __init__(self):

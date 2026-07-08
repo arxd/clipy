@@ -11,7 +11,9 @@ The command line interface follows this generic pattern:
 
     [command <positional_argument>* <keyword_argument>*]+
 
-A command is defined by a Python function decorated with `@CLI.cmd <cmd>`.
+A command is defined by a Python function decorated with `@Command() <Command.__new__>`.
+These are the various entrypoints to the project.
+They execute in their own process and may have their own, unique, `virtual environment <Venv>`.
 The function's parameters and the associated docstring fully define the command's interface and documentation.
 
 
@@ -20,17 +22,19 @@ Basic Example
 
 .. code-block:: python
 
-    @CLI.cmd
-    def hello(say, *, times__t=1):
+    @Command()
+    def hello(say, /, times__t=1, *, loud__l=False):
         ''' Say something multiple times
 
         Parameters:
-            <message>, --say <message>
+            <message>
                 What you want to say
-            --times <int>, -t <int>
+            <int> --times -t
                 How many times you want to say it.
+            --loud -l
+                Say it loudly
         '''
-        return ' '.join([say] * times__t)
+        return ' '.join([say] * times__t) + '!'*int(loud__l)
 
 
 .. code-block:: console
@@ -43,10 +47,10 @@ Using ``-h`` or ``--help`` will show the docstring documentation.
 
 .. code-block:: console
 
-    $ ./cli.py hello -t 3 --say Ho
-    Ho Ho Ho
+    $ ./cli.py hello Ho 3 -lll
+    Ho Ho Ho!!!
 
-If the value returned from a command is not ``None``, then it is pretty-printed.
+If the value returned from a command is not ``None``, then it is pretty-printed (or json-printed).
 You may use a single dash for single character names, otherwise use double-dashes.
 Names defined with double underscores separate the aliases that can be used on the command line (``--times`` or ``-t``).
 
@@ -55,18 +59,18 @@ The ``times__t`` parameter's default value is an int, so you can only pass integ
 
 .. code-block:: console
 
-   $ ./cli.py "Hello World" -t=2
+   $ ./cli.py "Hello World" -lt 2
    Hello World Hello World
 
-Since the parameter ``say`` is defined as a keyword *or* positional, you can pass it positionally, as well.
-But ``times__t`` is keyword only so it cannot be given positionally.
+Since the parameter ``times__t`` is defined as a keyword *or* positional, you can pass it positionally after the message, or explicitly with ``-t`` or ``--times``.
+But ``loud__l`` is keyword-only so it cannot be given positionally.
 
 
 
 Positional vs. Keyword
 =======================
 
-Positional parameters always precede keyword arguments (with the exception of ``*args`` as described later).
+Positional parameters always precede keyword arguments, with the exception of ``*args`` as described later (`var-args <var-args>`).
 
 First, command line arguments are taken one by one until a dash argument (that might be a keyword) is encountered which indicates the start of keyword arguments.  Note that negative numbers don't look like a keyword, so they are accepted as-is.
 
@@ -79,16 +83,16 @@ Positional
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(a=3, /, banana__b='hi', *, carrot__c:int=None):
         ''' Foo
 
         Parameters:
             <int>
                 Positional only
-            <str>, --banana <str>, -b <str>
+            <str> --banana -b
                 Positional or keyword
-            --carrot <int>, -c <int>
+            --carrot -c <int>
                 Keyword only
         '''
         print(f"a={a}  banana={banana__b}  carrot={carrot__c}")
@@ -112,8 +116,8 @@ Notice how the docstring indicates which parameters may be given positionally.
 Keyword
 --------
 
-Keyword parameters are given with the name (``-x``, ``--bob``, ``--etc``) followed by the value.
-The value may follow the name after a space (``-x 3``), or be joined with an equals (``-x=3``).
+Keyword parameters are given with the name, ``-x``, ``--bob``, ``--etc``, followed by the value.
+The value may follow the name after a space, ``-x 3``, or be joined with an equals, ``-x=3``.
 
 Multi-letter names must use two dashes, and underscores are turned into dashes, so ``a_long_name`` becomes ``--a-long-name``.
 Single-letter names may use a single dash.
@@ -137,7 +141,7 @@ Bool
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(*, verbose__v=False, times__t:int=None):
         print(f"v={verbose__v}  t={times__t}")
 
@@ -182,7 +186,7 @@ Lists
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(a:int, b:list[float]=None, c=[]):
         print(f"a={a}  b={b}  c={c}")
 
@@ -210,8 +214,8 @@ Tuple
 
 .. code-block:: python
 
-    @CLI.cmd
-    def foo(a:tuple[int,str], b=tuple[str], c=(1,2,3)):
+    @Command()
+    def foo(a:tuple[int,str], b:tuple[str]=None, c=(1,2,3)):
         print(f"a={a}  b={b}  c={c}")
 
 .. code-block:: console
@@ -220,7 +224,7 @@ Tuple
     a=(1, 'hi')  b=('a', 'b', 'c')  c=(4, 5, 6)
     
     $ ./cli.py foo -b x -a="1, space"
-    a=(1, ' space')  b=('x', )  c=(1, 2, 3)
+    a=(1, ' space')  b=('x',)  c=(1, 2, 3)
     
 Tuples are given as a comma-separated set of values.
 The number of values is determined by the type.
@@ -237,34 +241,27 @@ A command may have sub-commands.
 Declaring Sub-commands
 -------------------------
 
-Sub-commands must be discoverable before execution starts, so they are given to the `@cmd <cmd>` decorator.
+Sub-commands must be discoverable before execution of the first command starts, so they are given to the `@Command() <Command.__new__>` decorator.
 
 The complete chain of commands is fully parsed before any commands are actually executed.
 By making the sub-command lookup deterministic we can provide better help and documentation support.
-Also, any command-line syntax errors in sub-commands are caught before anything is executed.
+Also, any command-line parse errors in sub-commands are caught before anything is executed.
 
-You can pass an entire module, a module path string, or even individual commands (`CommandDfn` objects) to the `@cmd <cmd>` decorator.
+You can pass an entire module, a module path string, or even individual commands (`CommandDfn` objects) to the `@Command() <Command.__new__>` decorator.
 
 By passing the module containing your commands as a string, it will be loaded only if a sub-command is actually called, which is generally preferred for loading efficiency.
 
-For even more precise control over sub-commands, in addition to the above, you can also pass a callable to the `@cmd <cmd>` decorator.
-You might, for example, want to ensure that necessary packages are installed lazily.
-
-The callable will be given a string prefix (possibly empty) of a sub-command.
-The callable must return one of the following:
-
-- A list of zero or more matching `CommandDfn` commands.  If the prefix is empty, all commands should be returned.
-- A module (or module path string) containing commands (a superset of all the commands matching the given prefix).
+See the Command.__new__ documentation for more detail on the parameters to the decorator.
 
 .. code-block:: python
 
     import sub_module
 
-    @CLI.cmd
+    @Command()
     def baz(a, b):
         return a+b
 
-    @CLI.cmd('..lazy.loaded', baz, sub_module)
+    @Command('..lazy.loaded', baz, sub_module)
     def foo():
         pass
 
@@ -273,27 +270,28 @@ Calling Sub-commands
 ---------------------
 
 You can opt-in to receive the sub-command `Command` object so that you can call it explicitly however you want.
-Or, you can let the sub-command get implicitly called with the result of the command.
+Or, you can let the sub-command get implicitly called after the command returns.
 
 .. _explicit-control:
 
 Explicit Sub-command Control
 -----------------------------
 
-In order to opt-in for explicit control you set the ``sub`` parameter of the `@cmd <cmd>` decorator to the string name of the (:ref:`hidden <hidden-params>`) parameter that will receive the sub-command `Command` object.
+In order to opt-in for explicit control you declare a keyword parameter named ``_sub_cmd`` (:ref:`hidden <hidden-params>`).
+That parameter will receive the sub-command `Command` object, or ``None`` if this is the last command in the chain.
 
-You are free to call the sub-command (`call()`, `call_async()`, `each()`, `each_async()`) however you like.
-If a sub-command was not given on the command line then you will get ``None`` instead of a `Command` object.
+You are free to call the sub-command (`__call__()`, `each()`, `wait()`, `each_async()`) zero or any number of times.
+The arguments you give to the sub-command will be used as defaults and may be overridden with arguments bound from the command-line.
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def baz(a:int, b=8):
         return a+b
 
-    @CLI.cmd(baz, sub='_sub')
-    def foo(_sub, z:int):
-        print(f"result: {z*(2 if _sub is None else _sub.call(3))}")
+    @Command(baz)
+    def foo(z:int, _sub_cmd):
+        print(f"result: {z*(2 if _sub_cmd is None else _sub_cmd(3,b=9))}")
 
 .. code-block:: console
 
@@ -309,19 +307,21 @@ If a sub-command was not given on the command line then you will get ``None`` in
 Implicit Sub-command Control
 -----------------------------
 
-If the command does not need explicit control of sub-command then it can be called implicitly (the default).
+If the command does not need explicit control of the sub-command then it does not define the ``_sub_cmd`` parameter and the sub-command will called implicitly after the command returns.
+The return value of the command will be used as default keyword arguments to the sub-command, so it must return a dict, or ``None``.
 
-The ``sub`` decorator parameter, by default, is set to ``!`` which indicates that the return value of the command should be treated as a dictionary of kwargs that will be set on the sub-command as default argument values.
-Those returned kwargs will override the default arguments in the function declaration, but the command-line arguments given to the sub-command will override all.
-Returning ``None`` is equivalent to returning an empty dictionary.
+Normally, in the implicit case, the return value of the sub-command will be passed up to the parent.
+But, if the command does not have a sub-command then its return value (any value) will be returned to the parent.
+
+There is a ``sub_required`` flag to the `@Command() <Command.__new__>` decorator that ensures (by default) that a sub command is given (if it has children).
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def baz(a:int, b=8):
         return a+b
 
-    @CLI.cmd(baz)
+    @Command(baz, sub_required=True)
     def foo(z:int):
         return {'a':10*z} if z else None
 
@@ -337,51 +337,6 @@ Returning ``None`` is equivalent to returning an empty dictionary.
     56
 
 
-Instead of returning a dictionary of kwargs, you can return any value and have that value be given to a specific keyword parameter of the sub-command.
-Set ``sub`` to the parameter name followed by a question mark or exclamation mark.
-
-The exclamation mark ``param!`` indicates that a sub-command *must* be given.
-The question mark ``param?`` indicates that a sub-command does not need to be given.
-
-Note that just a ``?`` would indicate that we are returning a dictionary of kwargs, but it is not necessary to use a sub-command.
-The default is ``!`` which is a required sub-command with a dictionary of kwargs.
-
-
-
-If the command's decorator does not set the ``sub`` parameter (or sets it to None) then the command's return (or yielded) value will be given to the sub-command implicitly.
-There are two ways the return value can be given to the sub-command: as a dictionary of kwargs, or as a value given to a specified named parameter.
-
-
-.. code-block:: python
-
-    @CLI.cmd
-    def baz(a:int, b=8):
-        return a+b
-
-    @CLI.cmd(baz, 'a!')
-    def foo(z:int):
-        return 2*z
-
-    @CLI.cmd(baz, sub='b?')
-    def bar(z:int):
-        return 2*z
-
-
-.. code-block:: console
-
-    $ ./cli.py foo 3
-    Error: required sub-command
-
-    $ ./cli.py foo 3 baz
-    14
-
-    $ ./cli.py bar 21
-    42
-
-    ./cli.py bar 10 baz 3
-    23
-
-
 
 Generators
 -----------
@@ -390,17 +345,17 @@ Commands may be defined as generator functions (normal or async).
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def lower(v):
         return str(v).lower()
 
-    @CLI.cmd(upper, sub_required=False)
+    @Command(lower, sub_required=False)
     async def count(end=26):
         for i in range(end):
-            yield chr(65+i)
+            yield {'v':chr(65+i)}
             await asyncio.sleep(1)
 
-When a generator is called using `call_sync()` or `call_async()` then its results are collected into a list and returned.
+When a generator is called using `__call__() <Command.__call__>` or `wait()` then its results are collected into a list and returned.
 
 .. code-block:: console
 
@@ -408,7 +363,7 @@ When a generator is called using `call_sync()` or `call_async()` then its result
 
     ['A', 'B', 'C']
 
-When a generator uses :ref:`implicit sub-command control <implicit-control>` then the sub-command is mapped over the generators results.
+When a generator uses :ref:`implicit sub-command control <implicit-control>` then the sub-command is mapped over the generator's results.
 The sub-command is called for each yielded parent value.
 
 .. code-block:: console
@@ -439,7 +394,7 @@ Since the trailing arguments are all captured, a command with ``*args`` cannot h
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(first=None, *files, verbose__v=False):
         print(f"first={first!r}  verbose={verbose__v}  files={files}")
 
@@ -466,7 +421,7 @@ By explicitly ending the keyword section with ``--`` you can safely capture any 
 If your command does not take any keyword parameters (or ``**kwargs``) then this is not an issue.
 
 If your var-args parameter name starts with an underscore (e.g., ``*_args``), then it is considered :ref:`hidden <hidden-params>` and will not capture additional command-line arguments.
-However, extra positional arguments may still be passed programmatically when calling the sub-command (e.g., ``_sub(1,2,3)``).
+However, extra positional arguments may still be passed programmatically when calling the sub-command (e.g., ``_sub_cmd(1,2,3)``).
 
 
 \**kwargs
@@ -479,7 +434,7 @@ A double dash ``--`` can be used to force the end of the current command's argum
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(a=False, **kwargs):
         print(f"a={a}  kwargs={kwargs}")
 
@@ -507,7 +462,7 @@ In order to pass an argument value that starts with a dash (e.g., ``-not-a-keywo
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(x:list, y:int):
         print(f"x={x}  y={y}")
 
@@ -540,20 +495,20 @@ This also applies to :ref:`*args and **kwargs <var-args>` parameters.
 
 .. code-block:: python
     
-    @CLI.cmd
-    def bar(_sub, /, q, **_kwargs):
-        print(f"bar: sub={_sub}  q={q}  kwargs={_kwargs}")
+    @Command()
+    def bar(_private, /, q, **_kwargs):
+        print(f"bar: private={_private}  q={q}  kwargs={_kwargs}")
 
-    @CLI.cmd(bar)
-    def foo(_sub, /, _x=1, y=2, _z=3, t=4):
+    @Command(bar)
+    def foo(_x=1, y=2, _z=3, t=4, _sub_cmd):
         print(f"foo: x={_x}  y={y}  z={_z}  t={t}")
-        _sub(10, r=11)
+        _sub_cmd(10, r=11)
 
 .. code-block:: console
 
     $ ./cli.py foo 6 7 bar
     foo: x=1  y=6  z=3  t=7
-    bar: sub=None  q=10  kwargs={'r':11}
+    bar: private=10  q=10  kwargs={'r':11}
 
     $ ./cli.py foo bar -r 11
     Unknown keyword argument 'r'
@@ -567,14 +522,15 @@ By adding a single trailing underscore to your command name or parameter name, y
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def break_(if_, else_):
         print(f"if={if_}  else={else_}")
 
 .. code-block:: console
 
-    $ ./cli.py break if=cookie else fix
+    $ ./cli.py break --if=cookie --else=fix
     if='cookie'  else='fix'
+
 
 
 Skip Argument
@@ -586,7 +542,7 @@ More generally, a single dash skips that parameter, even if it is not a ``list``
 
 .. code-block:: python
 
-    @CLI.cmd
+    @Command()
     def foo(x=1, y=[2,3]):
         print(f"x={x}  y={y}")
     
@@ -602,10 +558,10 @@ There is no syntax for explicitly setting a list parameter to an empty list from
 
 .. code-block:: console
     
-    $ ./cli.py - -
+    $ ./cli.py foo - -
     x=1  y=[2,3]
 
-    $ ./cli.py -y -
+    $ ./cli.py foo -y -
     x=1  y=[2,3]
 
 
@@ -614,5 +570,4 @@ Class Documentation
 
 .. autoclass:: libclipy.core.command.dfn.CommandDfn
 .. autoclass:: libclipy.core.command.command.Command
-.. autoclass:: libclipy.core.command.dfn.cmd
-    
+    :members: __call__, __new__, each, wait, each_async

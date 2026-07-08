@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
 
 # Define some program constants
-name = "clipy"
+name = "project"
 version = "0.0.1"
 env_prefix = name.upper() + '_'
 
@@ -32,7 +32,7 @@ env = Env(env_prefix, system='dev', target='local', verbosity=0, work=Path('loca
 
 @Target()
 def local():
-    grep_groups.v = {'tests':r'.*/_test.*', 'docs':r'docs/.*', 'core':r'libclipy/core/.*', 'tools':r'libclipy/tools/.*'}
+    grep_groups.v = {'tests':r'.*/_test.*', 'docs':r'docs/.*', 'libclipy':r'libclipy/.*'}
 
 
 @Command('libclipy.main', 'libclipy.grep', 'libclipy.docs', 'libclipy.testing', 'libclipy.hide', sub_required=False)

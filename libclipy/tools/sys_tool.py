@@ -1,4 +1,8 @@
-from ..core.errors import UsageError
+import re
+from functools import partial
+from libclipy.core.errors import UsageError
+from libclipy.core.pretty import CLR
+from .run import run
 
 
 class MissingTool(UsageError):
@@ -57,7 +61,7 @@ class VerifiedTool(type):
         if self.version_probe is None:
             assert(version is None), f"A version {version!r} is being specified without a defined version_probe"
         else:
-            probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else ((self.cmd, '--version'), self.version_probe)
+            probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else ((self.cmd.v, '--version'), self.version_probe)
             self.ensure_version(probe, probe_re, version)
     
 
@@ -96,7 +100,7 @@ class VerifiedTool(type):
     def install_help_generic(self):
         ''' Return a list of helpful lines of text that tells the user how to install this command.
         '''
-        return [f'Install {self.cmd}']
+        return [f'Install {self.cmd.default}']
 
 
 
@@ -133,10 +137,7 @@ class SysTool(metaclass=VerifiedTool):
 
     '''
     init_defaults = {}
-    cmd = None
     sub_commands = []
-    version = None
-    version_probe = None
 
 
     def __init__(self, **kwargs):
@@ -151,17 +152,9 @@ class SysTool(metaclass=VerifiedTool):
         return partial(self, cmd.replace('_','-'))
 
     
-    def __call__(self, *cmd, exec=False, **kwargs):  
-        return (run_exec if exec else run)(self.prepare_call(*cmd), **kwargs)
+    def __call__(self, *cmd, **kwargs):  
+        return run(self.prepare_call(*cmd), **kwargs)
 
 
     def prepare_call(self, *cmd):
-        return (type(self).cmd, *cmd)
-
-
-
-
-from functools import partial
-import re
-from .run import run, exec as run_exec
-from ..CLI import CLR
+        return (self.cmd.v, *cmd)

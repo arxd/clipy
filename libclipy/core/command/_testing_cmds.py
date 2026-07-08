@@ -1,19 +1,19 @@
-from .dfn import cmd
+from .command import Command
 
 
-@cmd()
+@Command()
 def bar(x, y):
     pass
 
-@cmd()
+@Command()
 def baz_():
     pass
 
-@cmd()
+@Command()
 def bar_fing():
     pass
 
-@cmd()
+@Command()
 def jim():
     pass
 
