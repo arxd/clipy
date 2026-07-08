@@ -65,7 +65,8 @@ class CommandDfn(type):
     
 
     def get_venv(self):
-        from cli import env, Venv
+        from config import env
+        from cli import Venv
         for venv in self.venv:
             if not venv.system or env.system in venv.system:
                 return venv

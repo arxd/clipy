@@ -1,23 +1,42 @@
 import json, sys, shlex, os, subprocess
-from libclipy import PrettyException
+from ..core.errors import PrettyException
+
+
+def _show_msg(msg, cmd, env):
+    if msg == True: msg = 'Running...'
+    if not msg: return
+    
+    if env is not None:
+        env = dict(env)
+        if not (set(os.environ) - env.keys()):
+            for k,v in os.environ.items():
+                if env[k] == v: env.pop(k)
+    env = ' '.join(f'{k}="{v}"' for k,v in (env or {}).items())
+    print(msg, '\n  $',env, cmd if isinstance(cmd, str) else shlex.join(cmd))
+
+
+
+class Exec():
+    def __init__(self, **kwargs):
+        kw = dict(env=None, msg=True, venv=None)
+        kw.update(kwargs)
+        for k,v in kw.items(): setattr(self, k, v)
+
+    def __call__(self):
+        if not self.venv:
+            _show_msg(self.msg, [self.cmd, *self.args[1:]], self.env)
+        sys.stdout.flush()
+        sys.stderr.flush()
+        if self.venv: self.venv.exec(self.data)
+        if self.env is None: (os.execv if self.cmd.startswith(os.path.sep) else os.execvp)(self.cmd, self.args)
+        (os.execve if self.cmd.startswith(os.path.sep) else os.execvpe)(self.cmd, self.args, self.env)            
+            
 
 
 class RunException(PrettyException):
     def __init__(self, **kwargs):
         for k,v in kwargs.items(): setattr(self, k, v)
 
-
-def _run_init(cmd, msg, env):
-    if not isinstance(cmd, str): cmd = list(map(str, cmd))
-    if msg == True: msg = 'Running...'
-    if msg:
-        print(msg, '\n  $', cmd if isinstance(cmd, str) else shlex.join(cmd))
-    if env:
-        e = dict(os.environ)
-        e.update(env)
-        env = e
-    return cmd, env
-    
 
 
 def run(cmd, *, msg=True, env=None, stdin=None, **kwargs):
@@ -52,7 +71,9 @@ def run(cmd, *, msg=True, env=None, stdin=None, **kwargs):
     'raise msg text' : Raise a RunException(msg="msg text", stdout, stderr, returncode)
 
     '''
-    cmd, env = _run_init(cmd, msg, env)
+    if not isinstance(cmd, str): cmd = list(map(str, cmd))
+    _show_msg(msg, cmd, env)
+    
     if not kwargs: kwargs = {'if_0':',,'}
     # Figure out if we need to capture stdout
     def _mode(i):
@@ -64,7 +85,9 @@ def run(cmd, *, msg=True, env=None, stdin=None, **kwargs):
             mode = want if mode == 0 or mode == want else subprocess.PIPE
         return mode
     try:
-        resp = subprocess.Popen(cmd, shell=isinstance(cmd,str), stdout=_mode(0), stderr=_mode(1), stdin=subprocess.PIPE if stdin else None, env=env)
+        cmd_kwargs = dict(stdout=_mode(0), stderr=_mode(1), stdin=subprocess.PIPE if stdin else None)
+        if env is not None: cmd_kwargs['env'] = env
+        resp = subprocess.Popen(cmd, shell=isinstance(cmd,str), **cmd_kwargs)
         if stdin and not isinstance(stdin, bytes): stdin = stdin.encode('utf8')
         outs = resp.communicate(input=stdin)
         code = resp.returncode

@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 from pathlib import Path
-from libclipy import UsageError, ConfigVar
+from cli import UsageError, ConfigVar
 from .sys_tool import SysTool
 
 
@@ -100,8 +100,9 @@ class Git(SysTool):
         stdout = self('--no-pager', 'grep', '-n', '-z', '--untracked', *args, pattern, msg=None, if_0='bin,,', if_1='null,,')
         if stdout is None: return
         for line in stdout.split(b'\n')[:-1]:
-            file,lno,detail = line.split(b'\x00')
-            yield (file.decode(), lno.decode(), detail.decode())
+            parts = line.split(b'\x00')
+            if len(parts) != 3: continue
+            yield (parts[0].decode(), parts[1].decode(), parts[2].decode())
 
 
     def pull_rebase(self, *args, **kwargs):
@@ -129,5 +130,5 @@ class Git(SysTool):
         return f'{remote}/{name}'
 
     
-    def prepare_call(self, *cmd):
-        return (self.cmd.v, '-C', str(self.repo), *cmd)
+    def prepare_call(self, *cmd, **kwargs):
+        return (self.cmd.v, '-C', str(self.repo), *cmd), kwargs

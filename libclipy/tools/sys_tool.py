@@ -1,8 +1,8 @@
-import re
+import re, os
 from functools import partial
 from libclipy.core.errors import UsageError
 from libclipy.core.pretty import CLR
-from .run import run
+from .run import run, Exec
 
 
 class MissingTool(UsageError):
@@ -152,9 +152,15 @@ class SysTool(metaclass=VerifiedTool):
         return partial(self, cmd.replace('_','-'))
 
     
-    def __call__(self, *cmd, **kwargs):  
-        return run(self.prepare_call(*cmd), **kwargs)
+    def __call__(self, *cmd, **kwargs):
+        cmd, kwargs = self.prepare_call(*cmd, **kwargs)
+        return run(cmd, **kwargs)
 
 
-    def prepare_call(self, *cmd):
-        return (self.cmd.v, *cmd)
+    def prepare_call(self, *cmd, **kwargs):
+        return (self.cmd.v, *cmd), kwargs
+    
+
+    def exec(self, *cmd, env=None):
+        cmd, kwargs = self.prepare_call(*cmd, env=env)
+        return Exec(cmd=cmd[0], args=cmd, **kwargs)

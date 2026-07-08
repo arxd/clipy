@@ -4,14 +4,16 @@ import sys, os, pickle, base64, traceback, json
 sys.path.insert(0, os.environ['_CLIPY_ROOT'])
 # Change to the root so every command knows where it is at
 os.chdir(os.environ['_CLIPY_ROOT'])
-import cli
+
+from cli import Exec, main
+from config import env
 
 # Get our data from the parent
 if sys.argv[1]:
     with open(int(sys.argv[1]), 'rb', closefd=True) as f:
         data = pickle.load(f)
 else:
-    cli.env.work.mkdir(parents=True, exist_ok=True)
+    env.work.mkdir(parents=True, exist_ok=True)
     data = {}
 
 
@@ -115,20 +117,18 @@ def run_coro(coro):
 # Main
 # ==========
 
-from libclipy.core.command.command import Exec
-
 fd = os.environ.get('_CLIPY_FD')
 out = fd and open(int(fd), 'wb', closefd=False)
 
 def output(v):
     if isinstance(v, Exec): return v
-    fmt = cli.env.format if fd is None else 'pickle'
+    fmt = env.format if fd is None else 'pickle'
     if fmt == 'pickle': return output_pickle(v, out or sys.stdout, out)
     if isinstance(v, Exception): return output_pretty(v, sys.stderr)
     return (output_json if fmt=='json' else output_pretty)(v, sys.stdout)
 
 try:
-    cmd = data.get('cmd', cli.main.instance().bind(*sys.argv[2:]))
+    cmd = data.get('cmd', main.instance().bind(*sys.argv[2:]))
     kwargs = data.get('kwargs',{})
     if not cmd.is_implicit: kwargs['_sub_cmd'] = cmd.sub
     handler = ['explicit','implicit'][cmd.is_implicit] + '_' + ['normal','generator'][cmd.is_generator]
@@ -144,6 +144,6 @@ finally:
 if result:
     import atexit
     atexit._run_exitfuncs()
-    result.venv.exec(result.data)
+    result()
 elif fd:
     os.close(int(fd))

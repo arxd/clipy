@@ -1,6 +1,6 @@
-from libclipy import ConfigVar, Command
+from cli import ConfigVar, Command
 from libclipy.core.pretty import CLR
-from libclipy.tools import Git
+from libclipy.tools.git import Git
 import re
 
 

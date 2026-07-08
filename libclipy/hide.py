@@ -1,5 +1,5 @@
 import os
-from libclipy import Command
+from cli import Command
 
 @Command()
 def hide(code=''):

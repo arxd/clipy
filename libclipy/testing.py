@@ -42,7 +42,7 @@ def test(spec=None, /, *, verbose__v=False, coverage__c=False):
             Open coverage data in the browser
     '''
     from functools import reduce
-    from cli import env
+    from config import env
     args = [['libclipy']]
     args += reduce(lambda a,b:a+b, [['--ignore', x] for x in os.listdir('.') if os.path.isdir(x) and x not in args[0]])
     pytest_ini = dict(

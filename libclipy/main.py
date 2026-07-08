@@ -1,11 +1,22 @@
-import shutil, cli
-from libclipy import Command
+import shutil
+from config import env
+from libclipy.tools.git import Git 
+from cli import Command, UsageError, run
 from pathlib import Path
 
 
+
 class Project():
+    @classmethod
+    def lookup(self, name):
+        all = Projects()
+        if (Path(name)/'cli.py').exists():
+            p = Project(name)
+            all.ensure(p)
+            return p
+        return all.lookup(name)
+
     def __init__(self, path='.'):
-        from libclipy.tools import Git 
         self.git = Git(repo=Path(path).resolve())
 
     def __str__(self):
@@ -21,12 +32,12 @@ class Project():
         shutil.copy(src.git.repo/path, d)
 
     def core_files(self, tools=None):
-        if tools == 'all': tools = ['gcloud', 'rsync']
+        if tools == 'all': tools = ['gcloud', 'rsync', 'aws', 'docker']
         tools = [f'{f}.py' for f in (tools or [])]
-        all = ['cli.py', 'README.rst.tmpl', '.gitignore.tmpl']
+        all = ['cli.py', 'config.py', 'README.rst.tmpl', '.gitignore.tmpl']
         all += [f"libclipy/{f}" for f in ['main.py.tmpl', 'grep.py', 'hide.py', 'testing.py', '__init__.py']]
-        all += self.git.ls('libclipy/core')
-        all += self.git.ls('libclipy/docs')
+        all += [f for f in self.git.ls('libclipy/core') if not f.name.startswith('_test')]
+        all += [f for f in self.git.ls('libclipy/docs') if not f.name.startswith('_test')]
         all += [f"libclipy/tools/{f}" for f in tools + ['__init__.py', 'sys_tool.py', 'run.py', 'git.py']]
         all += [f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py']]
         return [Path(f) for f in all]
@@ -40,24 +51,23 @@ class Project():
 class Projects(list):
     def __init__(self):
         try:
-            with open(cli.env.work/'projects') as f:
-                super().__init__([Project(p) for p in f.readlines()])
+            with open(env.work/'projects') as f:
+                super().__init__([Project(p.strip()) for p in f.readlines()])
         except:
             pass
+
+    def lookup(self, prefix):
+        for p in self:
+            if p.git.repo.name.startswith(prefix): return p
 
     def ensure(self, p):
         if p not in self: self.append(p)
         self.save()
 
     def save(self):
-        with open(cli.env.work/'projects', 'w') as f:
+        with open(env.work/'projects', 'w') as f:
             f.write(''.join(f"{p}\n" for p in self))
 
-
-
-@Command()
-def xxx():
-    return {'a':3}
 
 
 @Command()
@@ -86,7 +96,7 @@ def new_(project, tool__t=[]):
 
 
 @Command()
-def diff(project):
+def diff(project_name):
     ''' Compare the files in this reference implementation to the files in a derived project
     
     Parameters:
@@ -94,17 +104,14 @@ def diff(project):
             The path to the project to compare against.
             If you give just the project name then the local/projects file will be searched to find the path.
     '''
-    import os, shutil
-    from libclipy.tools.run import run
-
+    if not (project:=Project.lookup(project_name)): raise UsageError(f"Couldn't locate {project_name!r}")
     clipy = Project()
-    project = Project(project)
     # copy missing
     for f in clipy.core_files():
         fto = (f.with_suffix('') if f.suffix == '.tmpl' else f)
         if not project.file(fto).exists():
-            print(f"Copy {fto!r} from to {project}?")
-            if input("[y/N]: ").lower() == 'y': shutil.copy(clipy.file(f), project.file(fto))
+            print(f"Copy missing {fto}")
+            if input("[y/N]: ").lower() == 'y': project.copy_here(fto, clipy)
     # diff
     for f in clipy.core_files('all'):
         if f.suffix == '.tmpl' or not project.file(f).exists(): continue
@@ -114,3 +121,10 @@ def diff(project):
         c = input('Make changes to the (p)roject file or the (r)eference clipy file? ')
         if c == 'p': shutil.copy(clipy.file(f), project.file(f))
         if c == 'r': shutil.copy(project.file(f), clipy.file(f))
+
+
+@Command()
+def cp(file, project_name):
+    if not (project:=Project.lookup(project_name)): raise UsageError(f"Couldn't locate {project_name!r}")
+    clipy = Project()
+    project.copy_here(Path(file), clipy)

@@ -1,7 +1,7 @@
 import os, sys, shutil
 from pathlib import Path
-from libclipy import Command, Venv, UsageError
-from libclipy.tools import run, Git
+from cli import run, Command, Venv, UsageError
+from libclipy.tools.git import Git
 
 
 DIST = Path('docs/_dist')

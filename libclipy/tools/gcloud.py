@@ -2,7 +2,7 @@ import socket, time, subprocess, sys, json
 from pathlib import Path
 from .sys_tool import SysTool
 from .make import Make
-from libclipy import ConfigVar
+from cli import ConfigVar
 from libclipy.core.pretty import CLR
 
 localhost_iap_port = ConfigVar('localhost_iap_port The default port used on the localhost when an IAP tunnel is opened to a remote VM', default=2831)

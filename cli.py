@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-# *NOTE* Only use python 3.0-compatible SYNTAX in this file to maintain broad compatibility
 import sys, os
+
+env_prefix = 'CLIPY_'
+default_venv_path = '.python'
 
 # Move to the project root and add the project root to sys.path
 if __name__ == '__main__':
@@ -8,31 +10,19 @@ if __name__ == '__main__':
     os.environ['_CLIPY_ROOT'] = sys.path[0]
     os.chdir(sys.path[0])
 
-
-# Define some program constants
-name = "clipy"
-version = "0.0.1"
-env_prefix = name.upper() + '_'
-
+# Setup the default environment used to import main (and all commands)
 from libclipy.core.venv import Venv
-default_venv = Venv(base=os.environ.get(env_prefix+'VENV', '.python'), python='>=3.9', requirements='wcwidth')
-
+default_venv = Venv(base=os.environ.get(env_prefix+'VENV', default_venv_path), python='>=3.9', requirements='wcwidth')
 
 # Get into the default virtual environment and execute main().  Execution in script-mode stops here with an os.exec() call.
 if __name__ == '__main__': default_venv.exec(sys.argv[1:])
 
 
 # Everything below here is only called when cli is imported (not executed)
-from libclipy import UsageError, Command
-from libclipy.core.config import Target, Env
-from libclipy.grep import grep_groups
-from pathlib import Path
-
-env = Env(env_prefix, system='dev', target='local', verbosity=0, work=Path('local'), venv=Path('.python'), format='pretty')
-
-@Target()
-def local():
-    grep_groups.v = {'tests':r'.*/_test.*', 'docs':r'docs/.*', 'core':r'libclipy/core/.*', 'tools':r'libclipy/tools/.*'}
+from libclipy.core.command.command import Command
+from libclipy.core.config import ConfigVar, Target, Env
+from libclipy.core.errors import UsageError, PrettyException
+from libclipy.tools.run import Exec, run, RunException
 
 
 @Command('libclipy.main', 'libclipy.grep', 'libclipy.docs', 'libclipy.testing', 'libclipy.hide', sub_required=False)
@@ -52,14 +42,20 @@ def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=
         --format -f <json|pretty|pickle>
             How should objects returned from commands be formatted for stdout?
     '''
-    if version: return print(name, globals()['version'])
-    if target__t is not None: env.target = target__t
-    targets = [v.name for v in globals().values() if isinstance(v, Target)]
-    if env.target not in targets: raise UsageError('Invalid target: "%s" is not one of [ %s ]'%(env.target, ' | '.join(targets)))
-    if verbose__v or quiet__q: env.verbosity = int(verbose__v) - int(quiet__q)
-    if format__f is not None: env.format = format__f
+    import config
+    if version: return print(config.name, config.version)
+# target
+    if target__t is not None: config.env.target = target__t
+    targets = [k for k in dir(config) if isinstance(getattr(config,k), Target)]
+    if config.env.target not in targets: raise UsageError('Invalid target: "%s" is not one of [ %s ]'%(config.env.target, ' | '.join(targets)))
+# verbosity
+    if verbose__v or quiet__q: config.env.verbosity = int(verbose__v) - int(quiet__q)
+# output format
+    if format__f is not None: config.env.format = format__f
     format_kinds = {'pretty', 'json', 'pickle'}
-    if env.format not in format_kinds: raise UsageError('Invalid format: "%s" is not one of [ %s ]'%(env.format, ' | '.join(format_kinds)))
+    if config.env.format not in format_kinds: raise UsageError('Invalid format: "%s" is not one of [ %s ]'%(config.env.format, ' | '.join(format_kinds)))
+# Run the sub command
     if _sub_cmd is not None: return _sub_cmd.exec()
+# No sub command
     from libclipy.core.command.errors import HelpWanted
     raise HelpWanted(cmd=main.instance())

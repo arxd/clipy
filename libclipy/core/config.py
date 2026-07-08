@@ -4,21 +4,21 @@ UNSET = type('UNSET',tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: Fal
 
 
 def initialize_config(env):
-    import cli
+    import config
 # Collect mappings from environment variables to ConfigVars
     env_cfg_vars = []
-    for k,v in cli.env.items():
+    for k,v in config.env.items():
         try:
-            cfg_var = getattr(cli, k)
+            cfg_var = getattr(config, k)
             if isinstance(cfg_var, ConfigVar):
                 env_cfg_vars.append((cfg_var, v))
         except:
             continue
 # Set private env variables
-    for k,v in (env or {}).items(): cli.env[k] = v
+    for k,v in (env or {}).items(): config.env[k] = v
 # Set config from the env so the target has access, then set the target, finally make sure the environment overrides the target.
     for cfg_var, v in env_cfg_vars: cfg_var.v = v
-    getattr(cli, cli.env.target).apply()
+    getattr(config, config.env.target).apply()
     for cfg_var, v in env_cfg_vars: cfg_var.v = v
 
 
@@ -30,17 +30,15 @@ class ConfigVar():
     It stores meta data like documentation and source file location for printing documentation about config variables.
     '''
 
-    def __init__(self, name='', *, loc=1, cast=None, **kwargs):
+    def __init__(self, name='', *, loc=1, cast=None, default=UNSET):
         frame = sys._getframe(loc)
         self.loc = (frame.f_code.co_filename, frame.f_lineno)
         name_doc = name.split(' ',1)
         self.name = name_doc[0]
         self.doc = name_doc[1] if len(name_doc) == 2 else ''
         self.cast = cast or (lambda x: x)
-        if 'default' in kwargs:
-            self.default = UNSET if kwargs['default'] is UNSET else self.cast(kwargs['default'])
-        if self.name and hasattr(self, 'default'):
-            self.cvar = contextvars.ContextVar(self.name, default=self.default)
+        self.default = UNSET if default is UNSET else self.cast(default)
+        if self.name: self.cvar = contextvars.ContextVar(self.name, default=self.default)
         
 
     def __str__(self):
@@ -66,15 +64,15 @@ class ConfigVar():
             type(my_var) == ConfigVar
         '''
         self.cast = fn
-        if not self.name: self.name = fn.__name__
         self.doc += fn.__doc__ or ''
         # Figure out default value if it is not given to __init__
-        if not hasattr(self, 'default'):
-            sig = inspect.signature(fn)
-            default = next(iter(sig.parameters.items()))[1].default
-            self.default = UNSET if default is sig.empty else self.cast(default)
-        # Create cvar if it hasn't been created yet
-        if not hasattr(self, 'cvar'):
+        sig = inspect.signature(fn)
+        default = next(iter(sig.parameters.items()))[1].default
+        default_value = UNSET if default is sig.empty else self.cast(default)
+        new_default = default is not sig.empty and default_value != self.default
+        if not self.name or new_default:
+            if not self.name: self.name = fn.__name__
+            if new_default: self.default = default_value
             self.cvar = contextvars.ContextVar(self.name, default=self.default)
         return self
 

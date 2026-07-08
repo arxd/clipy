@@ -3,11 +3,7 @@ from collections import namedtuple
 from .dfn import CommandDfn, HELP
 from .param import Param, Bool, Str
 from .errors import UnknownKey, NotBool, MissingArgument, ExtraArguments, UnknownSubCommand, AmbiguousSubCommand, HelpWanted, SubRequired
-
-
-Exec = namedtuple('Exec', ['venv', 'data'])
-
-
+from libclipy.tools.run import Exec
 
 class Command():
     ''' This represents a possible entry point of the project.
@@ -139,7 +135,7 @@ class Command():
     def exec(self, *args, **kwargs):
         ''' Replace the current process with this command running in its venv.
         '''
-        return Exec(type(self).get_venv(), {'cmd':self, 'args':args, 'kwargs':kwargs})
+        return Exec(venv=type(self).get_venv(), data={'cmd':self, 'args':args, 'kwargs':kwargs})
 
 
     def bind(self, *args):

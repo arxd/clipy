@@ -32,7 +32,7 @@ class Venv():
             self.b_requirements = '\n'.join(self.requirements).encode('utf-8')
             self.system_packages = system_packages
         if base is None:
-            from cli import env
+            from config import env
             base = env.venv
         self.venv_base = base
 
