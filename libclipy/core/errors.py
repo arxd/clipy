@@ -2,8 +2,7 @@
 class PrettyException(Exception):
     ''' This is an Exception that has a pretty() method to render itself.
     '''
-    def __init__(self, msg=None, **kwargs):
-        if msg is not None: kwargs['msg'] = msg
+    def __init__(self, **kwargs):
         for k,v in kwargs.items(): setattr(self, k,v)
 
     def __str__(self):

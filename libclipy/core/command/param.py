@@ -189,7 +189,7 @@ def Str(self, sval, kw):
 class Bool(ParamType):
 
     def simple_parse(self, sval, kw):
-        names = ['true','t','yes','y','on','enable',  'false','f','no','n','off','disable']
+        names = ['true','t','yes','y','on','enable','enabled',  'false','f','no','n','off','disable','disabled']
         if sval.lower() in names: return names.index(sval.lower()) < len(names)/2
     # See if it is an int?
         try:

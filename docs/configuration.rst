@@ -16,7 +16,7 @@ These ambient values have various levels of mutability and configurability.
     Their limited storage capacity, string-type, and flat namespace are inconvenient.
     Their main benefit is that they carry over to sub-command processes.
 
-3. `ConfigVar`:  These are python's context-aware `ContextVar` objects.  They have proper namespace separation and any python type.  The downside is that they don't survive across to sub-command processes.
+3. `ConfigVar`:  These are python's context-aware ``contextvars.ContextVar`` objects.  They have proper namespace separation and any python type.  The downside is that they don't survive across to sub-command processes.
 
 
 
@@ -25,10 +25,10 @@ These ambient values have various levels of mutability and configurability.
 Target
 ========
 
-A target is a certain configuration of `ConfigVar`s for certain workflows or deployment environments such as staging, or production.
+A target is a certain configuration of `ConfigVar`\ s for certain workflows or deployment environments such as staging, or production.
 The actual target name is set as an environment variable and can be changed more dynamically as a parameter to cli.py. ``./cli.py -t staging ...`
 
-In practice, a target is just a function defined in cli.py and decorated with `@Target() <Target.__new__>`
+In practice, a target is just a function defined in cli.py and decorated with `@Target() <Target.__call__>`
 
 
 .. autoclass:: libclipy.core.config.Target
