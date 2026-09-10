@@ -23,3 +23,6 @@ class UsageError(PrettyException):
     
     They should do what they are told in the error message and then try again.
     '''
+    def __init__(self, msg, **kwargs):
+        super().__init__(msg=msg.split('\n') if isinstance(msg, str) else msg, **kwargs)
+    

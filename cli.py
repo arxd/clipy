@@ -25,7 +25,7 @@ from libclipy.core.errors import UsageError, PrettyException
 from libclipy.tools.run import Exec, run, RunException
 
 
-@Command('libclipy.main', 'libclipy.grep', 'libclipy.docs', 'libclipy.testing', 'libclipy.hide', sub_required=False)
+@Command('libclipy.cli_project', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.docs', 'libclipy.cli_testing', sub_required=False)
 def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=False, format__f=None):
     ''' The universal command line interface for all functionality contained in this project.
 

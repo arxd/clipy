@@ -1,23 +1,35 @@
+from pathlib import Path
+import tempfile
 from .sys_tool import SysTool
-from ..CLI import config_var
+from cli import ConfigVar
+
 
 class Rsync(SysTool):
     ''' Copy files to a remote machine accessible with ssh.
 
     Examples:
 
-        rsync = Rsync().remote('user@remote:2222')
+        rsync = Rsync(remote='user@remote:2222')
         rsync.sync('bob', 'file1.txt', 'folder/file2.txt', 'empty_folder/')
-    '''
-    @config_var
-    def version(v='3'):
-        ''' The desired version rsync '''
-        return str(v)
-    
+    '''    
     version_probe = r'^rsync\s+version\s+(?P<v0>\d+).(?P<v1>\d+).(?P<v2>\d+)'
-    cmd = 'rsync'
+    cmd = ConfigVar('rsync_path The path to the rsync executable', default='rsync')
+    version = ConfigVar('rsync_version The desired config version for rsync', default='3')
+
 
     def __init__(self, remote=None, args=None, links=True, i=None, host_check=False):
+        ''' Create an rsync command object
+
+        Parameters:
+            remote
+                user@hostname[:port]
+            links
+                Copy symlinks as symlinks.  Otherwise, transform symlink into referent file/dir
+            i
+                Selects a file from which the identity (private key) for public key authentication is read.
+            host_check | False
+                use StrictHostKeyChecking and UserKnownHostsFile
+        '''
         self.args = ['-vz', '-rtp', '-l' if links else '-L']
         if args: self.args += args
         remote = remote.rsplit(':',1)
@@ -36,7 +48,7 @@ class Rsync(SysTool):
         Parameters:
             dest
                 This is the destination *folder*.
-                The contents of the destination folder will modified to match the `src` files.
+                The contents of the destination folder will be modified to match the `src` files.
                 If it is not an absolute path then it is relative to the user's home directory.
             src
                 A list of files that should exist 
@@ -59,7 +71,7 @@ class Rsync(SysTool):
         # Build the filter file
             with open(tmp.name, 'w') as f:
                 for s in src:
-                    if s.startswith('!'):
+                    if isinstance(s, str) and s.startswith('!'):
                         f.write(f'P {s[1:]}\n')
                     else:
                         _ensure_directory(f, Path(s).parts[:-1])
@@ -74,7 +86,3 @@ class Rsync(SysTool):
         '''
         kwargs['delete'] = False
         return self.sync(*args, **kwargs)
-
-
-from pathlib import Path
-import tempfile

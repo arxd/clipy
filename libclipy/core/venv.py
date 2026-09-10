@@ -91,4 +91,5 @@ class Venv():
             os.write(write_fd, pickle.dumps(data, protocol=5))
             os.close(write_fd)
             data = []
-        os.execv(self.venv_path('bin/python'), ['python', '-I', 'libclipy/core/entry_point.py', str(read_fd)]+data)
+        python = self.venv_path('bin/python')
+        os.execv(python, [python, '-I', 'libclipy/core/entry_point.py', str(read_fd)]+data)

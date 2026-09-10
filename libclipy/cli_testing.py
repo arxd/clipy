@@ -62,7 +62,7 @@ def test(spec=None, /, *, verbose__v=False, coverage__c=False):
     if spec: args.append(spec)
 # run pytest.main in a separate process (Because it needs it's own event loop and a clean module load)
     from libclipy.tools.run import run
-    if (r:=run([sys.executable, '-I', 'libclipy/testing.py', json.dumps(args)])): sys.exit(r)
+    if (r:=run([sys.executable, '-I', 'libclipy/cli_testing.py', json.dumps(args)])): sys.exit(r)
     if coverage__c:
         url = 'local/coverage/index.html'
         try: run(['open', '-a', 'Google Chrome', url])

@@ -2,7 +2,7 @@
 cli.py
 ======
 
-`Read the built documentation <../../blob/docs/markdown/README.md>`__
+This is an inline-library of useful tooling solutions to give any project a nice CLI.
 
 This project serves two primary purposes.
 
@@ -18,7 +18,7 @@ This project serves two primary purposes.
    - A consistent way to call all kinds of function signatures (using ``inspect.signature`` to the fullest extent).
    - Generators, async, and async generators are all supported.
    - The ability to accept multiple list-typed parameters.
-   - ``*args`` and ``**kwargs`` have useful abilities.
+   - ``*args`` and ``**kwargs`` can be utilized.
 
 2. An inline-library of useful functions for scripting and tooling.
 
@@ -39,15 +39,21 @@ This project is a project based on the cli.py concept, so it is a good demonstra
 Getting Started
 ================
 
-Run ``./cli.py`` to see what commands are available.
-Run ``./cli.py docs view`` and read all of this documentation in the browser.
+You can read the `markdown documentation <../../blob/docs/markdown/README.md>`__ if you're browsing this on github.
 
-Create a new project.
+.. code-block:: bash
+
+   # List available commands
+   $ ./cli.py
+
+   # Open this documentation locally in the browser
+   $ ./cli.py docs view
+
 
 .. code-block:: console
 
    # Create a new project
-   $ ./cli.py create my_project
+   $ ./cli.py new ../my_project
 
 
 Rational

@@ -1,0 +1,1 @@
+{"features": ["aws", "diff", "docker", "gcloud", "make", "rsync", "sed", "docs", "cli.grep", "cli.testing", "cli.install", "cli.workflow"]}
