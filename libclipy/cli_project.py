@@ -1,5 +1,5 @@
 from cli import Command, run
-from libclipy.core.pretty import CLR
+from libclipy.core.pretty import CLR, print as pprint
 from .project import Project
 from libclipy.tools.diff import Diff
 from config import version
@@ -12,7 +12,7 @@ def new_(project_path, feature__f=[]):
     Parameters:
         <project_path>
             A path to the new project root
-        --feature -f [feature_name]
+        --feature -f <feature_name>*
             We need this clipy feature
     '''
     from config import version
@@ -65,7 +65,8 @@ def diff(project_name='', verbose__v=False):
             x = diff.compare(proj.file(f), clipy.file(f), path=f)
             if int(verbose__v) < 2 and x.status == 'same': continue
             if not verbose__v and not d.status: continue
-            print(f"{d.status:>2} " + '\n'.join(x.pretty()))
+            print(f"{d.status:>2} ")
+            pprint.pretty(x)
         print(f"\n{CLR.o} version {CLR.x}: {proj.info.get('version')}")
         print(f"{CLR.o}features {CLR.x}: {proj.info.get('features')}")
         print(f"{CLR.o}    path {CLR.x}: {proj}")
@@ -87,7 +88,15 @@ def diff(project_name='', verbose__v=False):
 
 @Command()
 def features(project_name='', *, add__a=[], rem__x=[]):
-    ''' Add or remove features from a project
+    ''' Add or remove features from a project.
+
+    Parameters:
+        <project>
+            The path or name of the project to edit
+        --add -a <feature>*
+            Add a feature to the project
+        --rem -x <feature>*
+            Remove a feature from the project
     '''
     proj = Project.lookup(project_name)
     before = set(proj.info['features'])
@@ -100,16 +109,24 @@ def features(project_name='', *, add__a=[], rem__x=[]):
 
 
 @Command()
-def sync(project_name=''):
+def sync(project_name='', *, force__f=False, reverse__r=False):
     ''' Synchronize a project with the clipy reference.
     
     Parameters:
         <project>
             The path or name of the project to sync.
+        --reverse -r
+            We want to move changes from the project to clipy.
+            This is the reverse of what we are normally doing which is moving changes from clipy to our project.
+            Resolve diff conflicts even if only the project's file changed.
+        --force -f
+            Ignore any previous syncs with this project.
+            You will need to re-resolve many conflicting files and missing files will be re-copied.
     '''
     diff = Diff()
     clipy = Project()
     proj = Project.lookup(project_name)
+    if force__f: proj.sync_hashes = {}
     diffed = proj.diff()
     for f, d in diffed.items():
         if not d.status: continue
@@ -124,10 +141,17 @@ def sync(project_name=''):
         if x.status == 'same': continue
     # Copy over missing files
         if x.status == 'missing':
-            clipy.copy_to(f, proj)
+            if d.proj_hash_cached is None:
+                print(f"Copy new file: {f}")
+                clipy.copy_to(f, proj)
+            else:
+                print(f"Project deleted: {f}")
             continue
+        # Did only the project's file change?
+        if d.status == 'p' and not reverse__r: continue
     # Resolve a changed file
-        print(f"{d.status:>2} " + '\n'.join(x.pretty()))
+        pprint.pretty(x)
+        print(f"Status: {d.status:>2}")
         if (p:=input("[e]dit / [c]opy / keep: ")) == 'c':
             clipy.copy_to(f, proj)
         elif p == 'e':

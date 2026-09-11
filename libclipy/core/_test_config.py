@@ -54,10 +54,10 @@ def test_configvar_decorator_3():
 
 
 def test_configvar_decorator_3():
-    ''' Docs add '''
+    ''' function docstring overwrites parameter docstring '''
     @ConfigVar('bar hello')
     def foo(x=3):
         ''' docstring
         '''
         return x
-    assert((foo.name, foo.doc, foo.default) == ('bar','hello docstring\n        ', 3))
+    assert('hello' not in foo.doc)

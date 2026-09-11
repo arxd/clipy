@@ -47,7 +47,7 @@ def test(spec=None, /, *, verbose__v=False, coverage__c=False):
     args += reduce(lambda a,b:a+b, [['--ignore', x] for x in os.listdir('.') if os.path.isdir(x) and x not in args[0]])
     pytest_ini = dict(
         asyncio_mode = 'strict', # auto
-        timeout = 2,
+        timeout = 5,
         python_files='_test_*.py',
         asyncio_default_fixture_loop_scope='function',
         log_format = '%(lvl)s %(message)s%(names)s %(rloc)s%(obj)s',

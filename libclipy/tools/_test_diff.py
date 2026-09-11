@@ -28,7 +28,7 @@ def test_change_ranges():
 
 def test_change_lines_slice_the_files():
     old, new = OLD.splitlines(), NEW.splitlines()
-    for c in parsed():
+    for c in parsed().changes:
         assert old[c.old.start:c.old.stop] == c.old_lines
         assert new[c.new.start:c.new.stop] == c.new_lines
 
@@ -56,6 +56,6 @@ def test_compare(tmp_path):
     diff = Diff()
     d = diff.compare(old, new, path='here.py')
     assert str(d.path) == 'here.py'
-    assert [c.op for c in d] == ['c', 'a']
+    assert [c.op for c in d.changes] == ['c', 'a']
     assert not diff.compare(old, old)
     assert diff.compare(old, tmp_path/'nope.py').missing == (tmp_path/'nope.py',)

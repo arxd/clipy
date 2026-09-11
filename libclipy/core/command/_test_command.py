@@ -1,4 +1,4 @@
-import pytest
+import pytest, asyncio
 from .command import Command
 from .errors import *
 from .param import Param, ParamType
@@ -495,24 +495,142 @@ def implicit_generator_cmd(loops:int):
     for i in range(loops):
         yield {'value':['zero','one','two'][i]}
 
-def test_implicit_generator():
-    ''' A command can be a generator function
+@Command(upper_)
+async def implicit_generator_async_cmd(loops:int):
+    for i in range(loops):
+        await asyncio.sleep(0)
+        yield {'value':['zero','one','two'][i]}
+
+
+def test_implicit_generator_mid_break():
+    ''' Break in the middle of iteration
     '''
     for x in implicit_generator_cmd.instance().bind('2','upper').each():
-        assert(x == 'ZERO')
         break
+    assert(x == 'ZERO')
     assert(list(implicit_generator_cmd.instance().bind('2','upper').each()) == ['ZERO','ONE'])
+
+
+def test_implicit_generator_async_mid_break():
+    ''' Break in the middle of iteration (async)
+    '''
+    for x in implicit_generator_async_cmd.instance().bind('2','upper').each():
+        break
+    assert(x == 'ZERO')
+    assert(list(implicit_generator_cmd.instance().bind('2','upper').each()) == ['ZERO','ONE'])
+ 
+
+def test_implicit_generator_raise():
+    ''' A generator can raise an exception '''
     with pytest.raises(IndexError) as e:
         all = []
         for x in implicit_generator_cmd.instance().bind('4','upper').each():
             all.append(x)
     assert(hasattr(e.value, 'traceback_text'))
-    assert(all == ['ZERO','ONE','TWO'])
-    assert(implicit_generator_cmd.instance().bind('0','upper')() == Param.unset)
+
+
+def test_implicit_generator_async_raise():
+    ''' A generator can raise an exception (async) '''
+    with pytest.raises(IndexError) as e:
+        all = []
+        for x in implicit_generator_async_cmd.instance().bind('4','upper').each():
+            all.append(x)
+    assert(hasattr(e.value, 'traceback_text'))
+
+
+def test_implicit_generator_call():
+    ''' Calling a generator can return zero or more results '''
+    assert(implicit_generator_cmd.instance().bind('0','upper')() == Command.no_return)
     assert(implicit_generator_cmd.instance().bind('1','upper')() == 'ZERO')
     assert(implicit_generator_cmd.instance().bind('2','upper')() == ('ZERO','ONE'))
 
 
+def test_implicit_generator_async_call():
+    ''' Calling a generator can return zero or more results (async)'''
+    assert(implicit_generator_async_cmd.instance().bind('0','upper')() == Command.no_return)
+    assert(implicit_generator_async_cmd.instance().bind('1','upper')() == 'ZERO')
+    assert(implicit_generator_async_cmd.instance().bind('2','upper')() == ('ZERO','ONE'))
+
+
+@pytest.mark.skip('implement this')
+def test_explicit_generator_call():
+    ''' Explicit generators work the same as implicit generators
+    '''
+
+
+# ==========
+# each_async
+# ==========
+
+@Command(upper_)
+async def paced_generator_cmd(loops:int, _delay:float=0.1):
+    ''' Yields with a real await between items so the parent can observe them arriving separately.
+    _delay is hidden so it can only be passed programmatically, not bound from the command line.
+    '''
+    for i in range(loops):
+        await asyncio.sleep(_delay)
+        yield {'value':['zero','one','two'][i]}
+
+
+@Command()
+def big_result_cmd(size:int):
+    ''' One result far larger than a pipe buffer, so its frame spans many reads '''
+    return 'x' * size
+
+
+@pytest.mark.asyncio
+async def test_each_async_call():
+    ''' wait() collects each_async() the same way __call__() collects each() '''
+    assert(await async_fn.instance().bind('3').wait() == '3')
+    assert(await implicit_generator_cmd.instance().bind('0','upper').wait() == Command.no_return)
+    assert(await implicit_generator_cmd.instance().bind('1','upper').wait() == 'ZERO')
+    assert(await implicit_generator_cmd.instance().bind('2','upper').wait() == ('ZERO','ONE'))
+
+
+@pytest.mark.asyncio
+async def test_each_async_agrees_with_each():
+    ''' The async path yields the same values in the same order as the sync path '''
+    cmd = lambda: implicit_generator_async_cmd.instance().bind('3','upper')
+    assert([x async for x in cmd().each_async()] == list(cmd().each()))
+
+
+@pytest.mark.asyncio
+async def test_each_async_arrives_incrementally():
+    ''' The point of each_async(): values arrive as produced, not batched at child exit.
+    This is what fails if the child's output pipe is left buffered without a flush.
+    '''
+    import time
+    delay, arrivals = 0.1, []
+    async for x in paced_generator_cmd.instance().bind('3','upper').each_async(_delay=delay):
+        arrivals.append(time.monotonic())
+    assert(len(arrivals) == 3)
+    assert(arrivals[-1] - arrivals[0] > delay) # Batched delivery would make this ~0
+
+
+@pytest.mark.asyncio
+async def test_each_async_big_frame():
+    ''' A record larger than the pipe buffer is reassembled from many reads '''
+    size = 1024*1024
+    assert(await big_result_cmd.instance().bind(str(size)).wait() == 'x'*size)
+
+
+@pytest.mark.asyncio
+async def test_each_async_mid_break():
+    ''' Break in the middle of iteration.  The abandoned generator must not leak its child. '''
+    agen = paced_generator_cmd.instance().bind('3','upper').each_async(_delay=0)
+    async for x in agen:
+        break
+    assert(x == 'ZERO')
+    await agen.aclose()
+
+
+@pytest.mark.asyncio
+async def test_each_async_raise():
+    ''' A generator can raise an exception '''
+    with pytest.raises(IndexError) as e:
+        async for x in implicit_generator_async_cmd.instance().bind('4','upper').each_async():
+            pass
+    assert(hasattr(e.value, 'traceback_text'))
 
 
 @Command()

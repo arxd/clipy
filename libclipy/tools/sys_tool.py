@@ -61,8 +61,8 @@ class VerifiedTool(type):
         if self.version_probe is None:
             assert(version is None), f"A version {version!r} is being specified without a defined version_probe"
         else:
-            probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else ((self.cmd.v, '--version'), self.version_probe)
-            self.ensure_version(probe, probe_re, version)
+            probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else (lambda s: (s.cmd.v, '--version'), self.version_probe)
+            self.ensure_version(probe(self), probe_re, version)
     
 
     def ensure_version(self, probe, probe_re, version):
@@ -74,6 +74,7 @@ class VerifiedTool(type):
             assert(got:=(got[0] + got[1]).strip())
         except Exception as e:
             raise MissingTool(tool=self, msg=f"Tool probe failed: {CLR.m}{probe}{CLR.x}", need=version, help=True)
+        self.version_probe_result = got
     # Match the tool output with the probe_re regular expression
         try:
             assert(m:=re.match(probe_re, got, re.I | re.MULTILINE))
@@ -158,7 +159,7 @@ class SysTool(metaclass=VerifiedTool):
 
 
     def prepare_call(self, *cmd, **kwargs):
-        return (self.cmd.v, *cmd), kwargs
+        return list(map(str, (self.cmd.v, *cmd))), kwargs
     
 
     def exec(self, *cmd, env=None):

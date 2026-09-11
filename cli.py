@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys, os
+import sys, os, logging
 
 env_prefix = 'CLIPY_'
 default_venv_path = '.python'
@@ -23,9 +23,10 @@ from libclipy.core.command.command import Command
 from libclipy.core.config import ConfigVar, Target, Env
 from libclipy.core.errors import UsageError, PrettyException
 from libclipy.tools.run import Exec, run, RunException
+from libclipy.core.pretty import print, CLR
 
 
-@Command('libclipy.cli_project', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.docs', 'libclipy.cli_testing', sub_required=False)
+@Command('libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.docs', 'libclipy.cli_testing', sub_required=False)
 def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=False, format__f=None):
     ''' The universal command line interface for all functionality contained in this project.
 

@@ -5,10 +5,9 @@ class CommandError(PrettyException):
     def __init__(self, **kwargs):
         for k,v in kwargs.items(): setattr(self, k, v)
 
-    def pretty(self):
-        yield from str(self).split('\n')
-        yield ""
-        yield "Error: Run with -h or --help for additional documentation for this command."
+    def __pretty__(self, p):
+        super().__pretty__(p)
+        p.ln(p.ERR, "Run with -h or --help for additional documentation for this command.")
 
 
 
@@ -86,15 +85,11 @@ class AmbiguousSubCommand(BindError):
 
 
 class HelpWanted(BindError):
-    def pretty(self):
+    def __pretty__(self, p):
         import inspect
-        from ..pretty import CLR
         subs = sorted(list(type(self.cmd).sub_commands()))
-        subs = [(s.name, (s.__doc__ or '').split('\n')[0].strip()) for s in subs]
-        w = max(0,0,*[len(c[0]) for c in subs])
-        yield from [f"  * {CLR.y}{s[0]}{CLR.x}{' '*(w-len(s[0]))}  {s[1]}" for s in subs]
-        if subs: yield ''
-        yield from inspect.cleandoc(self.cmd.__doc__ or '').split('\n')
+        p.pretty({s.name:(s.__doc__ or '').split('\n')[0].strip() for s in subs})
+        p.ln(inspect.cleandoc(self.cmd.__doc__ or '').split('\n'))
 
 
 class SubRequired(BindError):

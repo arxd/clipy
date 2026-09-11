@@ -13,8 +13,9 @@ class PrettyException(Exception):
         args = [f'{k}={v!r}' for k,v in self.__dict__.items()]
         return s+ ', '.join(args) + ')'
     
-    def pretty(self):
-        yield from str(self).split('\n')
+    def __pretty__(self, p):
+        p.ln(str(self))
+        p.pretty({k:v for k,v in self.__dict__.items() if k != 'msg'})
 
 
 

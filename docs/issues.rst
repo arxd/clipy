@@ -16,8 +16,6 @@ Issues
   * docstring verification (that it matches the signature)
 
 * vault
-* async Venv.each_async()
-* async generator commands
 * test-file specific venv
 
   * consolidate the different test runs into a single coverage report
@@ -43,3 +41,16 @@ Issues
     * Mutable defaults like ``c=[]`` work for typing empty lists as ``list[str]`` but are a Python
       footgun worth a caution.
 
+
+ctlr-c wait
+==============
+
+A single ctlr-c does a nice shutdown (send SIGINT to child processes and wait (DON'T do proc.kill() in _cleanup))
+subsequent SIGINT will be ignored for a few seconds.
+If we still aren't done after a couple of seconds then display a message saying "Ctl-C again for a hard kill (subprocess may leak)"
+Then the next SIGINT sends SIGKILL to subprocesses and os._exit()
+
+Sending args to subprocesses
+=============================
+
+Currently if the sending pipe fills up and blocks the subprocesses will never be opened to read from it.  deadlock

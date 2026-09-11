@@ -1,9 +1,14 @@
-import inspect, importlib, os, subprocess, pickle, atexit, sys
+import inspect, importlib, os, subprocess, pickle, atexit, struct, sys
 from collections import namedtuple
 from .dfn import CommandDfn, HELP
 from .param import Param, Bool, Str
 from .errors import UnknownKey, NotBool, MissingArgument, ExtraArguments, UnknownSubCommand, AmbiguousSubCommand, HelpWanted, SubRequired
 from libclipy.tools.run import Exec
+
+# Every value a child sends back on its _CLIPY_FD pipe is prefixed with its length.
+# A pickle is self-delimiting, so the sync reader in each() doesn't strictly need this,
+# but an async reader only ever sees bytes and has no way to know where a record ends.
+FRAME = struct.Struct('!I')
 
 class Command():
     ''' This represents a possible entry point of the project.
@@ -17,6 +22,8 @@ class Command():
 
     While not listed as a metaclass, subclasses of `Command` will have a type of `CommandDfn`.
     '''
+    no_return = type('None', tuple(), {'__repr__':lambda _:'No Return', '__bool__':lambda _:False, '__reduce__':lambda _:(getattr, (Command, 'no_return'))})()
+
 
     @staticmethod
     def _unpickle(path):
@@ -79,7 +86,7 @@ class Command():
         ''' Call the command synchronously
         '''
         r = list(self.each(*args, **kwargs))
-        if len(r) == 0: return Param.unset
+        if len(r) == 0: return Command.no_return
         return r[0] if len(r) == 1 else tuple(r)
     
 
@@ -87,7 +94,7 @@ class Command():
         ''' Call the command asynchronously
         '''
         r = [x async for x in self.each_async(*args, **kwargs)]
-        if len(r) == 0: return Param.unset
+        if len(r) == 0: return Command.no_return
         return r[0] if len(r) == 1 else tuple(r)
 
 
@@ -95,15 +102,19 @@ class Command():
         ''' A generator that yields each output of the command
         '''
         venv = type(self).get_venv()
-        data_fd = os.pipe()
-        out_fd = os.pipe()
+        data_fd = os.pipe() # The data we are sending the child
+        out_fd = os.pipe() # The data coming back to us from our child
         os.set_inheritable(out_fd[0], True)
+        # FIXME might deadlock if the pipe buffer fills up because the child isn't reading it (it hasn't been started)
         os.write(data_fd[1], pickle.dumps({'args':args, 'kwargs':kwargs, 'cmd':self}, protocol=5))
         os.close(data_fd[1])
         env = os.environ.copy()
         env['_CLIPY_FD'] = str(out_fd[1])
         proc = subprocess.Popen([venv.venv_path('bin/python'), '-I','libclipy/core/entry_point.py', str(data_fd[0])], pass_fds=(data_fd[0], out_fd[1]) if sys.platform != "win32" else None, env=env)
+        # We need to register _cleanup atexit instead of relying on the finally of try.
+        # The reason is that we are a generator and if our caller breaks out early our finally never gets called
         def _cleanup():
+            # proc.send_signal(SIGINT) -> wait 1s -> proc.send_signal(SIGTERM) -> wait 1s -> proc.send_signal(SIGKILL)
             proc.kill()
             proc.wait()
         atexit.register(_cleanup)
@@ -111,14 +122,14 @@ class Command():
         try:
             with open(out_fd[0], 'rb', closefd=True) as pipe_in:
                 while True:
-                    try:
-                        item = pickle.load(pipe_in)
-                        if isinstance(item, Exception):
-                            print(item.traceback_text)
-                            raise item
-                        yield item
-                    except EOFError:
-                        break
+                    header = pipe_in.read(FRAME.size)
+                    if not header: break # A clean EOF: the child closed the pipe
+                    if len(header) < FRAME.size: raise ValueError(f"Truncated frame header from subprocess: {header!r}")
+                    item = pickle.loads(pipe_in.read(*FRAME.unpack(header)))
+                    if isinstance(item, Exception):
+                        print(item.traceback_text)
+                        raise item
+                    yield item
             proc.wait()
             if proc.returncode != 0: raise ValueError(f"Subprocess had a non-zero exit: {proc.returncode}")
         finally:
@@ -127,9 +138,83 @@ class Command():
 
 
     async def each_async(self, *args, **kwargs):
-        ''' An async generator that yields each output of the command as they arrive
+        ''' An async generator that yields each output of the command as they arrive (written by Claude)
         '''
-        raise NotImplementedError()
+        import asyncio # Deferred: every command is a fresh interpreter, so import cost is not free
+        if sys.platform == "win32": raise NotImplementedError("each_async() needs POSIX fd passing")
+        loop = asyncio.get_running_loop()
+
+        class _Proc(asyncio.SubprocessProtocol):
+            ''' The child inherits our stdio, so process exit is the only event we care about.
+            The results come back over a separate pipe which a SubprocessTransport can't carry.
+            '''
+            def __init__(self): self.exited = asyncio.Event()
+            def process_exited(self): self.exited.set()
+
+    # venv_path() may shell out to uv to build a venv, which would block the loop
+        venv = type(self).get_venv()
+        python = await loop.run_in_executor(None, venv.venv_path, 'bin/python')
+        data_fd = os.pipe() # The data we are sending the child
+        out_fd = os.pipe() # The data coming back to us from our child
+        # FIXME might deadlock if the pipe buffer fills up because the child isn't reading it (it hasn't been started)
+        os.write(data_fd[1], pickle.dumps({'args':args, 'kwargs':kwargs, 'cmd':self}, protocol=5))
+        os.close(data_fd[1])
+        env = os.environ.copy()
+        env['_CLIPY_FD'] = str(out_fd[1])
+        transport, proc_proto = await loop.subprocess_exec(_Proc,
+            python, '-I', 'libclipy/core/entry_point.py', str(data_fd[0]),
+            stdin=None, stdout=None, stderr=None, # Inherited, so the child's own output reaches the terminal
+            pass_fds=(data_fd[0], out_fd[1]), env=env)
+        os.close(data_fd[0])
+        os.close(out_fd[1])
+    # Same reasoning as each(): we are a generator, so our finally is not guaranteed to run.
+    # It is worse here though.  An async generator's finally contains awaits, so it can only run
+    # while a loop is alive (see run_coro's shutdown_asyncgens) -- unlike a sync generator it can
+    # never be rescued by the garbage collector.  So atexit stays the last line of defence, and it
+    # has to work with no loop at all: hence the raw Popen, whose kill()/wait() are synchronous.
+        proc = transport.get_extra_info('subprocess')
+        def _cleanup():
+            # proc.send_signal(SIGINT) -> wait 1s -> proc.send_signal(SIGTERM) -> wait 1s -> proc.send_signal(SIGKILL)
+            try:
+                proc.kill()
+                proc.wait()
+            except (ProcessLookupError, ChildProcessError):
+                pass # asyncio's child watcher got there first
+        atexit.register(_cleanup)
+        reader = asyncio.StreamReader(loop=loop)
+        pipe_transport, _ = await loop.connect_read_pipe(
+            lambda: asyncio.StreamReaderProtocol(reader, loop=loop), os.fdopen(out_fd[0], 'rb', 0))
+        try:
+            while True:
+                try:
+                    header = await reader.readexactly(FRAME.size)
+                except asyncio.IncompleteReadError as e:
+                    # Unlike each(), framing lets us tell a clean EOF from a half-written record
+                    if e.partial: raise ValueError(f"Truncated frame header from subprocess: {e.partial!r}") from None
+                    break # A clean EOF: the child closed the pipe
+                item = pickle.loads(await reader.readexactly(*FRAME.unpack(header)))
+                if isinstance(item, Exception):
+                    print(item.traceback_text)
+                    raise item
+                yield item
+            await proc_proto.exited.wait()
+            if (code := transport.get_returncode()) != 0: raise ValueError(f"Subprocess had a non-zero exit: {code}")
+        finally:
+            atexit.unregister(_cleanup)
+            pipe_transport.close()
+        # While the loop is alive the transport must do the killing.  Reaping the raw Popen here
+        # instead would steal the child from asyncio's watcher, which then fails with ECHILD.
+        # No await: this finally also runs during cancellation, where awaiting would re-raise.
+            if transport.get_returncode() is None: transport.kill()
+            transport.close()
+        # Let asyncio's waitpid thread report the exit before we leave.  Otherwise the Popen can be
+        # collected with returncode still None, which parks it in subprocess._active for the next
+        # Popen() to reap -- stealing the pid from that thread, which then fails with ECHILD.
+        # We have already killed the child, so this returns promptly.
+            try:
+                await proc_proto.exited.wait()
+            except asyncio.CancelledError:
+                pass # Already unwinding; the kill above is what actually matters
 
 
     def exec(self, *args, **kwargs):

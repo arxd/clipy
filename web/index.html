@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<title>Web Clipy</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Clipy">
+<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)">
+<link rel="shortcut icon" type="image/png" href="/favicon.png"/>
+<link rel="stylesheet" href="/main.css">
+<script type="importmap">{
+    "imports": {
+        "preact": "/esm/preact@10.29.8",
+        "preact/": "/esm/preact@10.29.8/",
+        "htm/preact": "/esm/htm@3.1.1/preact?external=preact",
+        "@preact/signals": "/esm/@preact/signals@2.11.2?external=preact",
+        "preact-custom-element": "/esm/preact-custom-element@4.3.0",
+        "components/": "/lib/components/",
+        "screens/": "/lib/screens/",
+        "state/": "/lib/state/",
+        "lib/": "/lib/"
+    },
+    "scopes": {
+        "/esm/": {
+            "/esm/": "/esm/",
+            "/": "/esm/"
+        }
+    }
+}</script>
+</head><body>
+<script id='__main__' type="module">
+import { render } from 'preact'
+import { html } from 'htm/preact'
+import { Router, match_re } from 'components/router.js'
+import { Demo } from 'screens/demo.js'
+import { LP } from 'screens/lp.js'
+import { create_app_state, AppState } from 'state/app_state.js'
+import { Test } from 'screens/test.js'
+
+const routes = [
+    {match:match_re(/^\/$/),      html:()=>html`<${LP} />`},
+    {match:match_re(/^\/demo(?<path>\/.*)?$/), html:()=>html`<${Demo} />`},
+    {match:match_re(/^(?<p>.*)$/), html:({p})=>html`404: ${p}`},
+]
+//<AppState.Provider value=${create_app_state()}>
+render(html`<${Router} routes=${routes} />`, document.body)
+document.getElementById('__main__').remove()
+</script>
+</body></html>

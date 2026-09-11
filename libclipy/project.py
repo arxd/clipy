@@ -6,7 +6,7 @@ from libclipy.tools.git import Git
 from cli import UsageError
 from libclipy.core.pretty import CLR
 
-DFile = namedtuple('DFile', ('path', 'status', 'ref_hash', 'proj_hash'))
+DFile = namedtuple('DFile', ('path', 'status', 'ref_hash', 'proj_hash', 'proj_hash_cached'))
 
 class Project():
     info_file = 'libclipy/core/info.json'
@@ -65,9 +65,17 @@ class Project():
             yield from ['cli.py', 'libclipy/__init__.py', ]
             yield from [f"libclipy/tools/{f}" for f in ['__init__.py', 'sys_tool.py', 'run.py', 'git.py']]
             yield from [f for f in clipy.git.ls('libclipy/core') if not f.name.startswith('_test') and f.name!='info.json']
+        elif feature == 'web':
+            yield from self._feature_files('nginx')
+            yield from self._feature_files('openssl')
+            yield 'libclipy/cli_web.py'
+            yield from [f for f in clipy.git.ls('web')]
+            yield from [f for f in clipy.git.ls('libclipy/web')]
         elif feature == 'docs':
             yield from [f for f in clipy.git.ls('libclipy/docs') if not f.name.startswith('_test')]
             yield from [f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py']]
+        elif feature.startswith('lib.'):
+            yield f'libclipy/{feature[4:]}.py'
         elif feature.startswith('cli.'):
             yield f'libclipy/cli_{feature[4:]}.py'
         elif not Path(f'libclipy/tools/{feature}.py').exists():
@@ -98,13 +106,14 @@ class Project():
         dfs = {}
         # Deprecated files
         for f in set(self.info['hashes'].keys()) - files:
-            dfs[f] = DFile(f, 'd', None, None)
+            dfs[f] = DFile(f, 'd', None, None, None)
         # Expected files
         for f in files:
             hs = clipy.hash(f), self.hash(f)
+            proj_hash_cached = self.sync_hashes.get(f)
             status = 'r'*(hs[0] != self.info['hashes'].get(f))
-            status += 'p'*(hs[1] != self.sync_hashes.get(f))
-            dfs[f] = DFile(f, status, *hs)
+            status += 'p'*(hs[1] != proj_hash_cached)
+            dfs[f] = DFile(f, status, *hs, proj_hash_cached)
         return dfs
 
 

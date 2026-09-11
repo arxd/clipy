@@ -43,10 +43,10 @@ class Change(namedtuple('Change', ('op', 'old', 'new', 'old_lines', 'new_lines')
         return f"@@ {_at(self.old)} -> {_at(self.new)} @@ {self.name}"
 
 
-    def pretty(self, indent='  '):
-        yield f"{indent}{CLR.c}{self}{CLR.x}"
-        for line in self.old_lines: yield f"{indent}{CLR.r}- {line}{CLR.x}"
-        for line in self.new_lines: yield f"{indent}{CLR.g}+ {line}{CLR.x}"
+    def __pretty__(self, p):
+        p(f"{CLR.c}{self}{CLR.x}")
+        for line in self.old_lines: p(f"{CLR.r}- {line}{CLR.x}")
+        for line in self.new_lines: p(f"{CLR.g}+ {line}{CLR.x}")
 
 
 def _at(r):
@@ -75,6 +75,10 @@ class FileDiff():
         self.binary = binary
         self.missing = tuple(missing)
 
+
+    def __len__(self):
+        return len(self.changes)
+    
 
     @classmethod
     def parse(cls, a, b, out, *, path=None):
@@ -107,11 +111,12 @@ class FileDiff():
         return (n['a'], n['d'], n['c'])
 
 
-    def pretty(self):
+    def __pretty__(self, p):
         clr = {'same':CLR.a, 'differ':CLR.y, 'binary':CLR.m, 'missing':CLR.r}[self.status]
         note = ' '.join(str(m) for m in self.missing) or (f"+{self.counts[0]} -{self.counts[1]} ~{self.counts[2]}" if self.changes else '')
-        yield f"{CLR.bld}{self.path}{CLR.x} {clr}{self.status}{CLR.x} {note}"
-        for c in self.changes: yield from c.pretty()
+        p.hr()
+        for c in self.changes: p.pretty(c)
+        p(f"{CLR.bld}{self.path}{CLR.x} {clr}{self.status}{CLR.x} {note}")
 
 
 

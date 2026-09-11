@@ -68,6 +68,13 @@ This project bootstraps new clipy-based projects by copying in boilerplate and l
 That code is then owned, and can be freely edited/adapted, by the new project.
 
 
+Adding a Tool
+===============
+
+1) Derive from libclipy.tools.SysTool
+2) Add as a feature to libclipy/core/info.json
+3) Possibly update project/_feature_files to include the correct files for the feature
+
 .. toctree::
    :maxdepth: 1
 

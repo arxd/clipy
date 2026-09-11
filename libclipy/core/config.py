@@ -64,7 +64,7 @@ class ConfigVar():
             type(my_var) == ConfigVar
         '''
         self.cast = fn
-        self.doc += fn.__doc__ or ''
+        if fn.__doc__: self.doc = fn.__doc__
         # Figure out default value if it is not given to __init__
         sig = inspect.signature(fn)
         default = next(iter(sig.parameters.items()))[1].default

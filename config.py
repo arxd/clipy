@@ -13,7 +13,7 @@ env = Env(env_prefix, system='dev', target='local', verbosity=0, work=Path('loca
 # Config variables
 @Target()
 def local():
-    grep_groups.v = {'tests':r'.*/_test.*', 'docs':r'docs/.*', 'core':r'libclipy/core/.*', 'tools':r'libclipy/tools/.*', 'libclipy':r'libclipy/.*'}
+    grep_groups.v = {'tests':r'.*/_test.*', 'docs':r'docs/.*', 'core':r'libclipy/core/.*', 'web':r'(libclipy/)?web/.*', 'tools':r'libclipy/tools/.*', 'libclipy':r'libclipy/.*'}
     codes.v = {
         '': ('', ['local', 'config.py']),
         'd': ('documentation', ['docs', 'README.rst']),

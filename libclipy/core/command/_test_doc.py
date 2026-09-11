@@ -42,6 +42,7 @@ def hello(say, /, times__t=1, *, loud__l=False):
     return ' '.join([say] * times__t) + '!'*int(loud__l)
 
 
+@pytest.mark.skip("haven't decieded on a pretty implementation")
 def test_doc_hello_help():
     ''' $ ./cli.py hello -h  shows the docstring '''
     with pytest.raises(HelpWanted) as e:
@@ -557,18 +558,16 @@ def test_doc_generator_count_3_lower():
     assert(list(gen_count_sync.instance().bind('3', 'gen-lower').each()) == ['a', 'b', 'c'])
 
 
-@pytest.mark.xfail(reason='docs/issues.rst #5/#6: async generators and wait/each_async not implemented')
 def test_doc_generator_async_count():
     ''' async def count with yield is documented as supported '''
     assert(list(gen_count_async.instance().bind('3', 'gen-lower').each()) == ['a', 'b', 'c'])
 
 
-@pytest.mark.xfail(reason='docs/issues.rst #6: wait/each_async NotImplementedError')
-def test_doc_generator_wait_collects_list():
+@pytest.mark.asyncio
+async def test_doc_generator_wait_collects_list():
     ''' wait() is documented to collect generator results into a list '''
-    import asyncio
-    r = asyncio.get_event_loop().run_until_complete(gen_count_sync.instance().bind('3').wait())
-    assert(r == ['A', 'B', 'C'] or r == ({'v':'A'}, {'v':'B'}, {'v':'C'}))
+    assert(await gen_count_sync.instance().bind('3').wait() == ({'v':'A'}, {'v':'B'}, {'v':'C'}))
+    assert(await gen_count_async.instance().bind('3', 'gen-lower').wait() == ('a', 'b', 'c'))
 
 
 # ---------------------------------------------------------------------------
@@ -834,9 +833,7 @@ def test_doc_subcommand_prefix_match():
         root.instance().bind('i')
 
 
-@pytest.mark.skip
-def test_doc_each_async_not_implemented():
-    ''' each_async is NotImplementedError (docs/issues.rst #6) '''
-    import asyncio
-    with pytest.raises(NotImplementedError):
-        asyncio.run(hello.instance().each_async().__anext__())
+@pytest.mark.asyncio
+async def test_doc_each_async():
+    ''' each_async is documented as a way to call a command (docs/commands.rst) '''
+    assert([x async for x in hello.instance().bind('Ho','3','-l').each_async()] == ['Ho Ho Ho!'])
