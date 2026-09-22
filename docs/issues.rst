@@ -42,6 +42,11 @@ Issues
       footgun worth a caution.
 
 
+- each() re-raises an unpickled exception at :125, which skips the proc.wait()/returncode check at :129-130. The design above keeps the returncode check after the loop so the finally is the only cleanup path.
+
+- Venv.system_packages is only assigned when not self.use_parent (venv.py:29-33), but venv_path() reads it at :65. Running each() from a python outside the .python/<hash>/bin/ layout makes hash() (venv.py:46) scrape a bogus name, miss the directory, and fail with AttributeError: 'Venv' object has no attribute 'system_packages' instead of a clear error. Pre-existing and out of scope, but it is the failure each_async's executor-wrapped venv_path call will surface, so it should propagate cleanly rather than hang the generator.
+
+
 ctlr-c wait
 ==============
 
@@ -54,3 +59,5 @@ Sending args to subprocesses
 =============================
 
 Currently if the sending pipe fills up and blocks the subprocesses will never be opened to read from it.  deadlock
+
+

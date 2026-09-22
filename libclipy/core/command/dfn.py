@@ -71,6 +71,10 @@ class CommandDfn(type):
 
     def instance(self):
         return super().__call__()
+
+
+    def call_func(self, args, kwargs):
+        return self.__func__(*args, **kwargs)
     
 
     def get_venv(self):

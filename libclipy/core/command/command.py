@@ -104,13 +104,21 @@ class Command():
         venv = type(self).get_venv()
         data_fd = os.pipe() # The data we are sending the child
         out_fd = os.pipe() # The data coming back to us from our child
-        os.set_inheritable(out_fd[0], True)
         # FIXME might deadlock if the pipe buffer fills up because the child isn't reading it (it hasn't been started)
         os.write(data_fd[1], pickle.dumps({'args':args, 'kwargs':kwargs, 'cmd':self}, protocol=5))
         os.close(data_fd[1])
         env = os.environ.copy()
         env['_CLIPY_FD'] = str(out_fd[1])
-        proc = subprocess.Popen([venv.venv_path('bin/python'), '-I','libclipy/core/entry_point.py', str(data_fd[0])], pass_fds=(data_fd[0], out_fd[1]) if sys.platform != "win32" else None, env=env)
+        try:
+            proc = subprocess.Popen([venv.venv_path('bin/python'), '-I','libclipy/core/entry_point.py', str(data_fd[0])], pass_fds=(data_fd[0], out_fd[1]) if sys.platform != "win32" else None, env=env)
+        except BaseException:
+            os.close(out_fd[0]) # Nothing is going to read it, and no-one else will close it for us
+            raise
+        finally:
+            # The child has its own copies of these now (or never started at all), so drop ours.
+            # out_fd[0] is the exception: it stays open for the reader below to close.
+            os.close(data_fd[0])
+            os.close(out_fd[1])
         # We need to register _cleanup atexit instead of relying on the finally of try.
         # The reason is that we are a generator and if our caller breaks out early our finally never gets called
         def _cleanup():
@@ -118,7 +126,6 @@ class Command():
             proc.kill()
             proc.wait()
         atexit.register(_cleanup)
-        os.close(out_fd[1])
         try:
             with open(out_fd[0], 'rb', closefd=True) as pipe_in:
                 while True:
@@ -126,9 +133,7 @@ class Command():
                     if not header: break # A clean EOF: the child closed the pipe
                     if len(header) < FRAME.size: raise ValueError(f"Truncated frame header from subprocess: {header!r}")
                     item = pickle.loads(pipe_in.read(*FRAME.unpack(header)))
-                    if isinstance(item, Exception):
-                        print(item.traceback_text)
-                        raise item
+                    if isinstance(item, Exception): raise item
                     yield item
             proc.wait()
             if proc.returncode != 0: raise ValueError(f"Subprocess had a non-zero exit: {proc.returncode}")
@@ -138,9 +143,9 @@ class Command():
 
 
     async def each_async(self, *args, **kwargs):
-        ''' An async generator that yields each output of the command as they arrive (written by Claude)
+        ''' An async generator that yields each output of the command as they arrive. (written by Claude)
         '''
-        import asyncio # Deferred: every command is a fresh interpreter, so import cost is not free
+        import asyncio
         if sys.platform == "win32": raise NotImplementedError("each_async() needs POSIX fd passing")
         loop = asyncio.get_running_loop()
 
@@ -161,12 +166,19 @@ class Command():
         os.close(data_fd[1])
         env = os.environ.copy()
         env['_CLIPY_FD'] = str(out_fd[1])
-        transport, proc_proto = await loop.subprocess_exec(_Proc,
-            python, '-I', 'libclipy/core/entry_point.py', str(data_fd[0]),
-            stdin=None, stdout=None, stderr=None, # Inherited, so the child's own output reaches the terminal
-            pass_fds=(data_fd[0], out_fd[1]), env=env)
-        os.close(data_fd[0])
-        os.close(out_fd[1])
+        try:
+            transport, proc_proto = await loop.subprocess_exec(_Proc,
+                python, '-I', 'libclipy/core/entry_point.py', str(data_fd[0]),
+                stdin=None, stdout=None, stderr=None, # Inherited, so the child's own output reaches the terminal
+                pass_fds=(data_fd[0], out_fd[1]), env=env)
+        except BaseException:
+            os.close(out_fd[0]) # Nothing is going to read it, and no-one else will close it for us
+            raise
+        finally:
+            # The child has its own copies of these now (or never started at all), so drop ours.
+            # out_fd[0] is the exception: it stays open for the reader below to close.
+            os.close(data_fd[0])
+            os.close(out_fd[1])
     # Same reasoning as each(): we are a generator, so our finally is not guaranteed to run.
     # It is worse here though.  An async generator's finally contains awaits, so it can only run
     # while a loop is alive (see run_coro's shutdown_asyncgens) -- unlike a sync generator it can
@@ -182,8 +194,7 @@ class Command():
                 pass # asyncio's child watcher got there first
         atexit.register(_cleanup)
         reader = asyncio.StreamReader(loop=loop)
-        pipe_transport, _ = await loop.connect_read_pipe(
-            lambda: asyncio.StreamReaderProtocol(reader, loop=loop), os.fdopen(out_fd[0], 'rb', 0))
+        pipe_transport, _ = await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), os.fdopen(out_fd[0], 'rb', 0))
         try:
             while True:
                 try:
@@ -193,9 +204,7 @@ class Command():
                     if e.partial: raise ValueError(f"Truncated frame header from subprocess: {e.partial!r}") from None
                     break # A clean EOF: the child closed the pipe
                 item = pickle.loads(await reader.readexactly(*FRAME.unpack(header)))
-                if isinstance(item, Exception):
-                    print(item.traceback_text)
-                    raise item
+                if isinstance(item, Exception): raise item
                 yield item
             await proc_proto.exited.wait()
             if (code := transport.get_returncode()) != 0: raise ValueError(f"Subprocess had a non-zero exit: {code}")
@@ -278,7 +287,7 @@ class Command():
 
 
     def args_kwargs(self, *default_args, **default_kwargs):
-        ''' Figure out final args/kwargs for calling the commands function (__func__).
+        ''' Figure out final args/kwargs for calling the command's function (__func__).
         Any arguments previously bound with bind() will take precedent over the default args given to this method.
         '''
     # Validate the default arguments
@@ -297,7 +306,7 @@ class Command():
                     if (v:=p.default) is Param.unset: raise MissingArgument(param=p) from None
                 kwargs[p.name] = v
             else:
-         # Positional or keyword
+        # Positional or keyword
             # First pop off a keyword if possible.  This will not be a keyword from the command line, so it is a good starting place
                 v = default_kwargs.pop(p.name) if p.is_kw and p.name in default_kwargs else Param.unset
             # Overwrite with the command-line argument

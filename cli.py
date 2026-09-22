@@ -44,7 +44,6 @@ def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=
             How should objects returned from commands be formatted for stdout?
     '''
     import config
-    if version: return print(config.name, config.version)
 # target
     if target__t is not None: config.env.target = target__t
     targets = [k for k in dir(config) if isinstance(getattr(config,k), Target)]
@@ -58,5 +57,6 @@ def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=
 # Run the sub command
     if _sub_cmd is not None: return _sub_cmd.exec()
 # No sub command
+    if version: return dict(name=config.name, version=config.version)
     from libclipy.core.command.errors import HelpWanted
     raise HelpWanted(cmd=main.instance())

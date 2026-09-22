@@ -552,10 +552,17 @@ def test_implicit_generator_async_call():
     assert(implicit_generator_async_cmd.instance().bind('2','upper')() == ('ZERO','ONE'))
 
 
-@pytest.mark.skip('implement this')
+
+@Command(upper_)
+def explicit_generator_cmd(loops:int, *, _sub_cmd):
+    yield from [_sub_cmd(value=['zero','one','two'][i]) for i in range(loops)]
+    yield 'done'
+
+
 def test_explicit_generator_call():
     ''' Explicit generators work the same as implicit generators
     '''
+    assert(explicit_generator_cmd.instance().bind('2', 'upper')() == ('ZERO', 'ONE', 'done'))
 
 
 # ==========
@@ -624,6 +631,31 @@ async def test_each_async_mid_break():
     await agen.aclose()
 
 
+def _open_fd_count():
+    ''' How many file descriptors does this process have open right now? '''
+    import os
+    return len(os.listdir('/dev/fd' if os.path.isdir('/dev/fd') else '/proc/self/fd'))
+
+
+def test_each_no_fd_leak():
+    ''' each() must close its own ends of the pipes it hands to the child '''
+    cmd = lambda: implicit_generator_cmd.instance().bind('1','upper')()
+    cmd() # Warm up, so one-time allocations aren't counted as a leak
+    before = _open_fd_count()
+    for _ in range(3): cmd()
+    assert(_open_fd_count() == before)
+
+
+@pytest.mark.asyncio
+async def test_each_async_no_fd_leak():
+    ''' each_async() must close its own ends of the pipes it hands to the child '''
+    cmd = lambda: paced_generator_cmd.instance().bind('1','upper').wait(_delay=0)
+    await cmd() # Warm up, so one-time allocations aren't counted as a leak
+    before = _open_fd_count()
+    for _ in range(3): await cmd()
+    assert(_open_fd_count() == before)
+
+
 @pytest.mark.asyncio
 async def test_each_async_raise():
     ''' A generator can raise an exception '''
@@ -642,3 +674,14 @@ def test_pass_kw_to_pos_or_kw():
     '''
     result = pass_kw_to_pos_or_kw.instance()(pos_or_kw=9)
     assert(result == 9)
+
+
+@pytest.mark.skip('implement')
+def test_exceptions_deep():
+    ''' execptions from deep children should be propigated to the top
+    '''
+
+@pytest.mark.skip('implement')
+def test_exceptions_outside_try():
+    ''' What happen to exceptions that are thrown in entry_point outside of the try section?
+    '''
