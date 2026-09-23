@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
 # Setup the default environment used to import main (and all commands)
 from libclipy.core.venv import Venv
-default_venv = Venv(base=os.environ.get(env_prefix+'VENV', default_venv_path), python='>=3.9', requirements='wcwidth')
+default_venv = Venv(base=os.environ.get(env_prefix+'VENV', default_venv_path), python='3.9', requirements='wcwidth')
 
 # Get into the default virtual environment and execute main().  Execution in script-mode stops here with an os.exec() call.
 if __name__ == '__main__': default_venv.exec(sys.argv[1:])
@@ -26,7 +26,7 @@ from libclipy.tools.run import Exec, run, RunException
 from libclipy.core.pretty import print, CLR
 
 
-@Command('libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.docs', 'libclipy.cli_testing', sub_required=False)
+@Command('libclipy.cli_install', 'libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.docs', 'libclipy.cli_testing', sub_required=False)
 def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=False, format__f=None):
     ''' The universal command line interface for all functionality contained in this project.
 

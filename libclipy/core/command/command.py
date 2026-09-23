@@ -352,8 +352,8 @@ class Command():
 def _each_key(args):
     while args:
         arg = args.pop(0)
-    # Did we get to the next command?
-        if arg[0] != '-':
+    # Did we get to the next command?  '' is a blank sub-command name, not a keyword.
+        if not arg or arg[0] != '-':
             args.insert(0, arg) # put it back
             return
         if arg == '--': return

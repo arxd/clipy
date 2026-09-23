@@ -42,4 +42,3 @@ def workflow(code='', /, *, list__l=False):
     os.makedirs('.vscode', exist_ok=True)
     with open('.vscode/settings.json', 'w') as f:
         json.dump(settings, f, indent=2)
-

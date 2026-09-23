@@ -56,7 +56,7 @@ class Project():
         shutil.copy(self.file(path), dest)
 
 
-    def _feature_files(self, feature):
+    def _feature_files(self, feature, all_features):
         ''' Yields files (relative paths) needed for the given feature.
         This only works when Project('.') is the clipy repository.
         '''
@@ -64,13 +64,22 @@ class Project():
         if feature == 'core':
             yield from ['cli.py', 'libclipy/__init__.py', ]
             yield from [f"libclipy/tools/{f}" for f in ['__init__.py', 'sys_tool.py', 'run.py', 'git.py']]
-            yield from [f for f in clipy.git.ls('libclipy/core') if not f.name.startswith('_test') and f.name!='info.json']
+            def _exclude(f):
+                if f.name.startswith('_test'): return True
+                if f.name == 'info.json': return True
+                if f.is_relative_to(Path('libclipy/core/dep')): return True
+            yield from [f for f in clipy.git.ls('libclipy/core') if not _exclude(f)]
         elif feature == 'web':
-            yield from self._feature_files('nginx')
-            yield from self._feature_files('openssl')
+            yield from self._feature_files('nginx', all_features)
+            yield from self._feature_files('openssl', all_features)
             yield 'libclipy/cli_web.py'
             yield from [f for f in clipy.git.ls('web')]
             yield from [f for f in clipy.git.ls('libclipy/web')]
+        elif feature == 'dep':
+            def _exclude(f):
+                if f.name.startswith('_test'): return True
+                if f.name == 'cc.py' and 'cc' not in all_features: return True
+            yield from [f for f in clipy.git.ls('libclipy/core/dep') if not _exclude(f)]
         elif feature == 'docs':
             yield from [f for f in clipy.git.ls('libclipy/docs') if not f.name.startswith('_test')]
             yield from [f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py']]
@@ -88,8 +97,9 @@ class Project():
         ''' Returns a list of file Paths matching the features this project subscribes to
         '''
         files = set()
-        for feature in ['core', *(features or self.info['features'])]:
-            files.update(set(self._feature_files(feature)))
+        all_features = ['core', *(features or self.info['features'])]
+        for feature in all_features:
+            files.update(set(self._feature_files(feature, all_features)))
         return set([Path(f) for f in files])
 
 

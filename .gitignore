@@ -24,6 +24,7 @@ __pycache__/
 
 # editors
 .vscode
+.claude
 
 # OS
 .DS_Store

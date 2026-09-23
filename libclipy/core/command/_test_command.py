@@ -9,18 +9,13 @@ def see_kw(kwargs):
 
 
 
-@pytest.mark.xfail
-def test_bind_cli_missing():
-    ''' If all non-hidden arguments are not properly bound by the end of bind_cli then errors are thrown
-    '''
-    assert(0)
-
-
-@pytest.mark.xfail
 def test_blank_sub():
     ''' Try to get <blank> subcommand to throw
     '''
-    assert(0)
+    for argv in [('9', ''), ('-', '')]:
+        with pytest.raises(UnknownSubCommand) as e:
+            sub_command().bind_cli(*argv)
+        assert('<blank>' in str(e.value) and 'bar-fing' in str(e.value))
 
 
 
@@ -468,11 +463,9 @@ def test_hidden_names2():
     with pytest.raises(MissingArgument) as e:
         hidden_names2().bind_cli('1','2','-e','3').args_kwargs(4)
     assert('-d' not in str(e.value) and '_d' in str(e.value))
-
-@pytest.mark.xfail
-def test_hidden_names_c():
-    ''' A hidden positional parameter can be set from __call__(x) '''
-    assert(0)
+    args, kwargs = hidden_names2().bind_cli('1','2','-e','3').args_kwargs(4, 5, 6, 7, 8, 9)
+    assert(args == [4,'1','2',7,8,9])
+    assert(kwargs == {'e':'3'})
 
 
 @Command()

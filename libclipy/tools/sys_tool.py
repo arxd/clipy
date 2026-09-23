@@ -37,7 +37,7 @@ class VerifiedTool(type):
 
         If Tool(*verify_args) is unique then a new subclass of our Tool class will be dynamically created and re-used when those same *verify_args are used again.
         '''
-    # The return probed_tool(**kwargs) will recurse to this __call__.
+    # The return VerifiedTool(**kwargs) will recurse to this __call__.
     # Catch that and return an actual object (__init__ needs to be called manually)
         if '__' in self.__name__:
             obj = object.__new__(self)
@@ -63,29 +63,33 @@ class VerifiedTool(type):
         else:
             probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else (lambda s: (s.cmd.v, '--version'), self.version_probe)
             self.ensure_version(probe(self), probe_re, version)
-    
 
-    def ensure_version(self, probe, probe_re, version):
-        ''' Given the `probe` command, does the returned version (matched through `probe_re`) match `version`?
+
+    def run_probe(self, probe, version):
+        ''' Run the probe command and collect all output
         '''
-    # Run the probe command and collect all output
         try:
             got = run(probe, msg=None, if_0='utf8,utf8,')
             assert(got:=(got[0] + got[1]).strip())
         except Exception as e:
             raise MissingTool(tool=self, msg=f"Tool probe failed: {CLR.m}{probe}{CLR.x}", need=version, help=True)
-        self.version_probe_result = got
-    # Match the tool output with the probe_re regular expression
+        return got
+
+
+    def probe_match(self, got, probe_re):
+        ''' Match the probe output with the probe_re regular expression
+        '''
         try:
-            assert(m:=re.match(probe_re, got, re.I | re.MULTILINE))
-            got = got[m.start():m.end()]
+            assert(m:=re.search(probe_re, got, re.I | re.MULTILINE))
+            return m, got[m.start():m.end()]
         except:
             raise MissingTool(tool=self, got=got, msg=f"Probe output doesn't match probe regular expression: {CLR.y}{probe_re}{CLR.x}")
-    # If the match result is a string then match against that string
+
+
+    def version_check(self, m, got, version):
         try:
         # If no version is specified then everything is good
-            if not version:
-                pass
+            if not version: pass
         # Do a regex string match
             elif 'v' in m.groupdict():
                 assert(re.match(version, m['v'])), "Version mismatch"
@@ -96,6 +100,13 @@ class VerifiedTool(type):
                     if delta < 0: break
         except Exception as e:
             raise MissingTool(tool=self, msg=str(e), got=got, need=version, help=True)
+
+    
+    def ensure_version(self, probe, probe_re, version):
+        ''' Given the `probe` command, does the returned version (matched through `probe_re`) match `version`?
+        '''
+        self.version_probe_result = self.run_probe(probe, version)
+        self.version_check(*self.probe_match(self.version_probe_result, probe_re), version)
 
 
     def install_help_generic(self):

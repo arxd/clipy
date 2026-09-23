@@ -1,1 +1,1 @@
-{"features": ["aws", "diff", "docker", "gcloud", "make", "rsync", "sed", "envoy", "nginx", "web", "openssl", "docs", "cli.grep", "cli.testing", "cli.install", "cli.workflow"]}
+{"features": ["dep", "aws", "diff", "docker", "gcloud", "cc", "make", "rsync", "sed", "envoy", "nginx", "web", "openssl", "docs", "cli.grep", "cli.testing", "cli.install", "cli.workflow"]}

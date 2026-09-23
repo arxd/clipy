@@ -547,7 +547,7 @@ def _pretty_exc(v, expand, width, depth):
         tb = v.traceback_text
     else:
         import traceback
-        tb = traceback.format_exception(v)
+        tb = traceback.format_exception(type(v), v, v.__traceback__)
     return [CLR.r, *tb, CLR.x]
 
 def _pretty_obj(v, expand, width, depth):

@@ -12,7 +12,7 @@ class Rsync(SysTool):
         rsync = Rsync(remote='user@remote:2222')
         rsync.sync('bob', 'file1.txt', 'folder/file2.txt', 'empty_folder/')
     '''    
-    version_probe = r'^rsync\s+version\s+(?P<v0>\d+).(?P<v1>\d+).(?P<v2>\d+)'
+    version_probe = r'^rsync\s+version\s+(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)'
     cmd = ConfigVar('rsync_path The path to the rsync executable', default='rsync')
     version = ConfigVar('rsync_version The desired config version for rsync', default='3')
 
