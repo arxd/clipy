@@ -14,13 +14,13 @@ def run(cmd, *argv):
     ''' Bind argv, resolve args/kwargs (injecting _sub_cmd when explicit), call __func__.
     This runs the tests faster than starting a new processes for each command
     '''
-    inst = cmd.instance().bind(*argv)
+    inst = cmd().bind_cli(*argv)
     args, kwargs = inst.args_kwargs(**({} if cmd.is_implicit else {'_sub_cmd':inst.sub}))
     return cmd.__func__(*args, **kwargs)
 
 
 def bound(cmd, *argv):
-    return repr(cmd.instance().bind(*argv))
+    return repr(cmd().bind_cli(*argv))
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ def hello(say, /, times__t=1, *, loud__l=False):
 def test_doc_hello_help():
     ''' $ ./cli.py hello -h  shows the docstring '''
     with pytest.raises(HelpWanted) as e:
-        hello.instance().bind('-h')
+        hello().bind_cli('-h')
     text = '\n'.join(e.value.pretty())
     assert('Say something multiple times' in text)
     assert('--times' in text or 'times' in text)
@@ -61,11 +61,11 @@ def test_doc_hello_ho_3_lll():
 def test_doc_hello_types():
     ''' say is str; times__t default int so -t hi fails '''
     from .param import Str, Int, Bool
-    assert(type(hello.instance().params['say'].type) is Str)
-    assert(type(hello.instance().params['times__t'].type) is Int)
-    assert(type(hello.instance().params['loud__l'].type) is Bool)
+    assert(type(hello().params['say'].type) is Str)
+    assert(type(hello().params['times__t'].type) is Int)
+    assert(type(hello().params['loud__l'].type) is Bool)
     with pytest.raises(ParseError):
-        hello.instance().bind('x', '-t', 'hi')
+        hello().bind_cli('x', '-t', 'hi')
 
 def test_doc_hello_hello_world_lt_2():
     ''' $ ./cli.py hello "Hello World" -lt 2
@@ -83,7 +83,7 @@ def test_doc_hello_times_positional_or_keyword():
     assert(run(hello, 'Ho', '--times', '2') == 'Ho Ho')
     # loud is keyword-only: a trailing positional is an error (no sub-commands)
     with pytest.raises(ExtraArguments):
-        hello.instance().bind('Ho', '2', 'true')
+        hello().bind_cli('Ho', '2', 'true')
 
 # ---------------------------------------------------------------------------
 # Positional vs Keyword — Positional
@@ -117,14 +117,14 @@ def test_doc_positional_foo_short_kw():
 def test_doc_positional_only_cannot_be_named():
     ''' Parameters before / cannot be specified by name '''
     with pytest.raises(UnknownKey):
-        pos_foo.instance().bind('--a', '4')
+        pos_foo().bind_cli('--a', '4')
 
 
 def test_doc_keyword_only_must_be_named():
     ''' Parameters after * must be given by name; carrot cannot be third positional after a,b filled via defaults skip '''
     # a and banana filled, extra positional is not carrot
     with pytest.raises(ExtraArguments):
-        pos_foo.instance().bind('4', 'bye', '42')
+        pos_foo().bind_cli('4', 'bye', '42')
 
 
 # ---------------------------------------------------------------------------
@@ -184,10 +184,10 @@ def test_doc_bool_joined_group():
 
 def test_doc_bool_int_true():
     ''' int(True)==1 so int(verbose__v) works for a single flag '''
-    inst = bool_foo.instance().bind('-v')
+    inst = bool_foo().bind_cli('-v')
     args, kwargs = inst.args_kwargs()
     assert(int(kwargs['verbose__v']) == 1)
-    inst = bool_foo.instance().bind('-vvv')
+    inst = bool_foo().bind_cli('-vvv')
     args, kwargs = inst.args_kwargs()
     assert(int(kwargs['verbose__v']) == 3)
 
@@ -285,7 +285,7 @@ def test_doc_bool_disable_flag_space_disable():
     Space-separated disable after --flag looks like a sub-command name, so flag stays True
     and disable is bound as the sub-command.
     '''
-    assert(list(bool_val_foo.instance().bind('disable', '--flag', 'disable').each())
+    assert(list(bool_val_foo().bind_cli('disable', '--flag', 'disable').each())
            == ['a=False  f=True  states=[True, False]'])
 
 
@@ -295,7 +295,7 @@ def test_doc_bool_t_f_off_errors():
     Space-separated off is not consumed as the flag value; treated as unknown sub-command.
     '''
     with pytest.raises(UnknownSubCommand):
-        bool_val_foo.instance().bind('t', '-f', 'off')
+        bool_val_foo().bind_cli('t', '-f', 'off')
 
 
 def test_doc_bool_keyword_equals_enable_disable():
@@ -355,7 +355,7 @@ def list_foo(a:int, b:list[float]=None, c:list=None):
 def test_doc_list_element_type_default_str():
     ''' Unspecified list element type defaults to str'''
     from .param import List, Str
-    t = list_foo.instance().params['c'].type
+    t = list_foo().params['c'].type
     assert(isinstance(t, List))
     assert(isinstance(t.subs[0], Str))
 
@@ -444,7 +444,7 @@ def test_doc_declaring_subcommands_module_string():
 
 def test_doc_subcommand_chain_parsed_before_execution():
     ''' Full chain is bound before any command runs '''
-    inst = decl_foo.instance().bind('decl-baz', '1', '2')
+    inst = decl_foo().bind_cli('decl-baz', '1', '2')
     assert(inst.sub is not None)
     assert(bound(decl_foo, 'decl-baz', '1', '2') == "decl-foo() -> decl-baz('1', '2')")
 
@@ -474,7 +474,7 @@ def test_doc_explicit_foo_3_baz_b_7():
     Programmatic _sub_cmd(3,b=9) with CLI -b 7 overriding b → 3+7=10; z*10=30.
     Uses process execution via CommandDfn call path for the nested _sub_cmd(...).
     '''
-    assert(list(exp_foo.instance().bind('3', 'exp-baz', '-b', '7').each()) == ['result: 30'])
+    assert(list(exp_foo().bind_cli('3', 'exp-baz', '-b', '7').each()) == ['result: 30'])
 
 
 # ---------------------------------------------------------------------------
@@ -493,17 +493,17 @@ def imp_foo(z:int):
 
 def test_doc_implicit_foo_0_baz_3():
     ''' $ ./cli.py foo 0 baz 3  ->  11 '''
-    assert(list(imp_foo.instance().bind('0', 'imp-baz', '3').each()) == [11])
+    assert(list(imp_foo().bind_cli('0', 'imp-baz', '3').each()) == [11])
 
 
 def test_doc_implicit_foo_5_baz_1():
     ''' $ ./cli.py foo 5 baz 1  ->  9  (CLI a=1 overrides parent default a=50) '''
-    assert(list(imp_foo.instance().bind('5', 'imp-baz', '1').each()) == [9])
+    assert(list(imp_foo().bind_cli('5', 'imp-baz', '1').each()) == [9])
 
 
 def test_doc_implicit_foo_5_baz_b_6():
     ''' $ ./cli.py foo 5 baz -b 6  ->  56 '''
-    assert(list(imp_foo.instance().bind('5', 'imp-baz', '-b', '6').each()) == [56])
+    assert(list(imp_foo().bind_cli('5', 'imp-baz', '-b', '6').each()) == [56])
 
 
 def test_doc_implicit_foo_5_baz_b_6():
@@ -515,7 +515,7 @@ def test_doc_sub_not_required():
     ''' sub_required can be set to false
     $ ./cli.py foo 5 -> {'a': 50}
     '''
-    assert(imp_foo.instance().bind('5')() == {'a': 50})
+    assert(imp_foo().bind_cli('5')() == {'a': 50})
 
 
 # ---------------------------------------------------------------------------
@@ -544,30 +544,30 @@ async def gen_count_async(end=26):
 
 def test_doc_generator_count_3_sync_call_shape():
     ''' __call__ collects multi-yield into a tuple of yielded values (dicts here) '''
-    r = gen_count_sync.instance().bind('3')()
+    r = gen_count_sync().bind_cli('3')()
     assert(r == ({'v': 'A'}, {'v': 'B'}, {'v': 'C'}))
 
 
 def test_doc_generator_count_3_documented_output():
     ''' $ ./cli.py count 3  ->  ['A', 'B', 'C']  (as documented) '''
-    assert(list(gen_count_sync.instance().bind('3').each()) == [{'v': 'A'}, {'v': 'B'}, {'v': 'C'}])
+    assert(list(gen_count_sync().bind_cli('3').each()) == [{'v': 'A'}, {'v': 'B'}, {'v': 'C'}])
 
 
 def test_doc_generator_count_3_lower():
     ''' $ ./cli.py count 3 lower  -> mapped lowercase letters '''
-    assert(list(gen_count_sync.instance().bind('3', 'gen-lower').each()) == ['a', 'b', 'c'])
+    assert(list(gen_count_sync().bind_cli('3', 'gen-lower').each()) == ['a', 'b', 'c'])
 
 
 def test_doc_generator_async_count():
     ''' async def count with yield is documented as supported '''
-    assert(list(gen_count_async.instance().bind('3', 'gen-lower').each()) == ['a', 'b', 'c'])
+    assert(list(gen_count_async().bind_cli('3', 'gen-lower').each()) == ['a', 'b', 'c'])
 
 
 @pytest.mark.asyncio
 async def test_doc_generator_wait_collects_list():
     ''' wait() is documented to collect generator results into a list '''
-    assert(await gen_count_sync.instance().bind('3').wait() == ({'v':'A'}, {'v':'B'}, {'v':'C'}))
-    assert(await gen_count_async.instance().bind('3', 'gen-lower').wait() == ('a', 'b', 'c'))
+    assert(await gen_count_sync().bind_cli('3').wait() == ({'v':'A'}, {'v':'B'}, {'v':'C'}))
+    assert(await gen_count_async().bind_cli('3', 'gen-lower').wait() == ('a', 'b', 'c'))
 
 
 # ---------------------------------------------------------------------------
@@ -605,7 +605,7 @@ def test_doc_star_args_no_subcommands():
     @Command(child)
     def parent(*files):
         pass
-    inst = parent.instance().bind('a', 'child')
+    inst = parent().bind_cli('a', 'child')
     assert(inst.sub is None)
     assert(inst.vargs == ['a', 'child'])
 
@@ -616,7 +616,7 @@ def test_doc_star_args_hidden_no_capture():
     def h(first=None, *_args, verbose__v=False):
         pass
     with pytest.raises(ExtraArguments):
-        h.instance().bind('a', 'b', 'c')
+        h().bind_cli('a', 'b', 'c')
 
 
 # ---------------------------------------------------------------------------
@@ -630,7 +630,7 @@ def kwargs_foo(a=False, **kwargs):
 
 def test_doc_kwargs_flag_group():
     ''' $ ./cli.py foo -axd 33 --long-name hi,bye '''
-    inst = kwargs_foo.instance().bind('-axd', '33', '--long-name', 'hi,bye')
+    inst = kwargs_foo().bind_cli('-axd', '33', '--long-name', 'hi,bye')
     args, kwargs = inst.args_kwargs()
     assert(args[0] is True)
     assert(kwargs == {'x': True, 'd': '33', 'long_name': 'hi,bye'})
@@ -660,7 +660,7 @@ def test_doc_backslash_leading_strip():
 
 def test_doc_backslash_star_args_preserved():
     ''' *args keep leading backslashes as-is '''
-    inst = args_foo.instance().bind('a', '\\-weird', 'b')
+    inst = args_foo().bind_cli('a', '\\-weird', 'b')
     args, kwargs = inst.args_kwargs()
     assert(args[0] == 'a')
     assert(args[1:] == ['\\-weird', 'b'])
@@ -695,14 +695,14 @@ def test_doc_hidden_foo_corrected_sub_call():
 def test_doc_hidden_foo_bar_r_11_documented():
     ''' $ ./cli.py foo bar -r 11  ->  Unknown keyword argument 'r'  (as documented) '''
     with pytest.raises(UnknownKey) as e:
-        hid_foo.instance().bind('--', 'hid-bar', '3', '-r', '11')
+        hid_foo().bind_cli('--', 'hid-bar', '3', '-r', '11')
     assert('r' in str(e.value).lower())
 
 
 def test_doc_hidden_unknown_key_realistic():
     ''' Realistic unknown key: foo 6 7 bar -r 11 '''
     with pytest.raises(UnknownKey) as e:
-        hid_foo.instance().bind('6', '7', 'hid-bar', '-r', '11')
+        hid_foo().bind_cli('6', '7', 'hid-bar', '-r', '11')
     assert('-r' in str(e.value) or 'r' in str(e.value))
 
 
@@ -744,7 +744,7 @@ def test_doc_skip_both_defaults():
 def test_doc_skip_keyword_dash_actually_errors():
     ''' -y - is MissingArgument '''
     with pytest.raises(MissingArgument):
-        skip_foo.instance().bind('-y', '-')
+        skip_foo().bind_cli('-y', '-')
 
 
 def test_doc_double_dash_ends_command():
@@ -801,7 +801,7 @@ def test_doc_annotation_wins_over_default():
     def ann(a:int=None):
         return a
     from .param import Int
-    assert(type(ann.instance().params['a'].type) is Int)
+    assert(type(ann().params['a'].type) is Int)
 
 
 @ParamType()
@@ -830,10 +830,10 @@ def test_doc_subcommand_prefix_match():
         pass
     assert('install' in bound(root, 'ins'))
     with pytest.raises(AmbiguousSubCommand):
-        root.instance().bind('i')
+        root().bind_cli('i')
 
 
 @pytest.mark.asyncio
 async def test_doc_each_async():
     ''' each_async is documented as a way to call a command (docs/commands.rst) '''
-    assert([x async for x in hello.instance().bind('Ho','3','-l').each_async()] == ['Ho Ho Ho!'])
+    assert([x async for x in hello().bind_cli('Ho','3','-l').each_async()] == ['Ho Ho Ho!'])

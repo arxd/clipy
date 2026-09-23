@@ -53,25 +53,9 @@ class CommandDfn(type):
 
 
     def __call__(self, *args, **kwargs):
-        return self.instance()(*args, **kwargs)
+        cmd = super().__call__()
+        return cmd
     
-
-    def each(self, *args, **kwargs):
-        yield from self.instance().each(*args, **kwargs)
-
-
-    async def wait(self, *args, **kwargs):
-        return await self.instance().wait(*args, **kwargs)
-
-
-    async def each_async(self, *args, **kwargs):
-        # `yield from` is not allowed in an async generator
-        async for x in self.instance().each_async(*args, **kwargs): yield x
-
-
-    def instance(self):
-        return super().__call__()
-
 
     def call_func(self, args, kwargs):
         return self.__func__(*args, **kwargs)

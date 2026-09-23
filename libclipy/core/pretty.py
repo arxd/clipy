@@ -540,9 +540,15 @@ class DocParameters(DocSection):
 
 
 def _pretty_exc(v, expand, width, depth):
-    if not isinstance(v, Exception): return None
-    import traceback
-    return [CLR.r, *traceback.format_exception(v), CLR.x]
+    if not isinstance(v, BaseException): return None
+    if isinstance(v, KeyboardInterrupt):
+        return [CLR.r, 'ctrl-c', CLR.x]
+    if hasattr(v, 'traceback_text'):
+        tb = v.traceback_text
+    else:
+        import traceback
+        tb = traceback.format_exception(v)
+    return [CLR.r, *tb, CLR.x]
 
 def _pretty_obj(v, expand, width, depth):
     if not hasattr(v, '__pretty__'): return None

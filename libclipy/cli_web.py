@@ -20,10 +20,6 @@ def nginx():
     return nginx.run()
 
 
-import logging
-log = logging.getLogger('bob')
-
-
 @Venv(requirements='wcwidth aiohttp')
 @Command()
 def server():
@@ -34,8 +30,13 @@ def server():
 
 
 @Command()
-def run_():
+async def run_():
     ''' Run both nginx and the webserver
     '''
-    
-
+    import asyncio
+    group = asyncio.gather(server().wait(), nginx().wait())
+    try:
+        await group
+    finally:
+        group.cancel()
+        await group

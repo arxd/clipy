@@ -46,6 +46,8 @@ Issues
 
 - Venv.system_packages is only assigned when not self.use_parent (venv.py:29-33), but venv_path() reads it at :65. Running each() from a python outside the .python/<hash>/bin/ layout makes hash() (venv.py:46) scrape a bogus name, miss the directory, and fail with AttributeError: 'Venv' object has no attribute 'system_packages' instead of a clear error. Pre-existing and out of scope, but it is the failure each_async's executor-wrapped venv_path call will surface, so it should propagate cleanly rather than hang the generator.
 
+- When a (generator) parent breaks and needs to SIGINT its child early, the out pipe is closed on the parent side while the child is still trying to write to it.  This is protected against in the child (entry_point) but maybe the parent should keep the pipe open so that the child can continue to send log info during cleanup.
+
 
 ctlr-c wait
 ==============

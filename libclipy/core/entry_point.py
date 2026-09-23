@@ -4,17 +4,20 @@
 # However, you can even choose to send the pickled object to stdout, but in that case it will be b64 encoded.
 def output_pickle(v, stream):
     if hasattr(v, '__traceback__'):
-        print(f"PICKLE ERR {type(v)} {v}")
-        v.traceback_text = "".join(traceback.format_exception(type(v), v, v.__traceback__))
+        if not hasattr(v, 'traceback_text'):
+            v.traceback_text = traceback.format_exception(type(v), v, v.__traceback__)
         v.__traceback__ = None
         v.__context__ = None
         v.__cause__ = None
     b = pickle.dumps(v, protocol=5)
-    stream.write(FRAME.pack(len(b)))
-    stream.write(b)
-    # `out` is a 128KB BufferedWriter, so without this nothing reaches our parent until we exit,
-    # which would defeat the point of Command.each_async() yielding values as they arrive.
-    stream.flush()
+    try:
+        stream.write(FRAME.pack(len(b)))
+        stream.write(b)
+        # `out` is a 128KB BufferedWriter, so without this nothing reaches our parent until we exit,
+        # which would defeat the point of Command.each_async() yielding values as they arrive.
+        stream.flush()
+    except BrokenPipeError:
+        pass
 
 
 def _send_child_results(v):
@@ -45,32 +48,36 @@ def f_implicit(v):
 def f_async(v): return run_coro(v)
 def f(v): return v
 
+
 def run_coro(coro):
     ''' This is an improved asyncio.run(coro) that handles Ctl-C correctly so that async with() constructs get cleaned up. 
     '''
-    import asyncio, signal
+    global task, loop
+    import asyncio
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-# A wrapper to catch cancel and allow a double ctl-C for hard kill
     task = loop.create_task(coro)
-# Handle ctl-c SIGINT
-    def handle_signal(signal, _):
-        nonlocal task
-        if task is None: os._exit(128+signal) # FIXME We need to SIGKILL open child processes
-        loop.call_soon_threadsafe(task.cancel)
-        task = None
-    signal.signal(signal.SIGINT, handle_signal)
 # Run the loop
     try:
         return loop.run_until_complete(task)
     except asyncio.CancelledError:
         raise KeyboardInterrupt() from None
     finally:
+        # Tasks other than ours can still be pending (an asyncio.gather() whose parent was
+        # cancelled abandons its children).  A task suspended inside an async generator holds
+        # that generator mid-asend, and shutdown_asyncgens() can't aclose() a running generator
+        # ("aclose(): asynchronous generator is already running").  So settle the tasks first,
+        # exactly as asyncio.run() does.
+        if pending := [t for t in asyncio.all_tasks(loop) if not t.done()]:
+            for t in pending: t.cancel()
+            loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
         # Abandoning an async generator (`async for ... break`) doesn't run its finally inline.
         # CPython schedules athrow(GeneratorExit) as a *task*, so closing the loop first just
         # discards that task ("Task was destroyed but it is pending") and the finally never runs --
         # which would leak the child process that Command.each_async() cleans up there.
         loop.run_until_complete(loop.shutdown_asyncgens())
+        # each_async() hands venv_path() to the default executor, whose threads outlive the loop
+        loop.run_until_complete(loop.shutdown_default_executor())
         loop.close()
 
 # python is executed with -I, so we need to manually add the project root to the path
@@ -79,7 +86,7 @@ sys.path.insert(0, os.environ['_CLIPY_ROOT'])
 os.chdir(os.environ['_CLIPY_ROOT'])
 
 # Set logging class early so top-level getLogger() calls during imports uses our logger
-import logging, pickle, traceback
+import logging, pickle, traceback, signal, time
 from libclipy.core.logger import ClipyLogger, ClipyLogFilter
 logging.setLoggerClass(ClipyLogger)
 
@@ -87,6 +94,24 @@ logging.setLoggerClass(ClipyLogger)
 from cli import Exec, main
 from config import env
 from libclipy.core.command.command import FRAME, Command
+
+
+# Handle ctl-c SIGINT
+task = None
+loop = None
+def handle_signal(signal, _):
+    global task
+    if isinstance(task, float):
+        dt = time.time() - task
+        if dt > 2: os._exit(128+signal)
+    else:
+        cancel, task = task and task.cancel, time.time()
+        if cancel:
+            loop.call_soon_threadsafe(cancel)
+        else:
+            raise KeyboardInterrupt()
+signal.signal(signal.SIGINT, handle_signal)
+
 
 # Our parent will send our cmd, args, kwargs through a pipe
 if sys.argv[1]:
@@ -124,7 +149,7 @@ else: # The root command's results go to stdout/stderr, but how should we format
 
 try:
 # If we are a child command then our cmd, args, kwargs will be given to us through the data pipe
-    cmd = data.get('cmd', main.instance().bind(*sys.argv[2:]))
+    cmd = data.get('cmd', main().bind_cli(*sys.argv[2:]))
     args, kwargs = data.get('args',tuple()), data.get('kwargs',{})
 # Set the _sub_cmd for implicit commands.  FIXME: should this be done in cmd.args_kwargs?
     if not cmd.is_implicit: kwargs['_sub_cmd'] = cmd.sub
@@ -137,22 +162,21 @@ try:
     if not isinstance(result, Exec):
         if result is not Command.no_return: output(result)
         if ret_stream: os.close(int(ret_fd)) # We handled the output() (didn't exec) so close the fd
-        sys.exit(0)
-    # Fallthrough and let the finally clean-up before doing the exec()
 
-except Exception as e:
-    print(type(e), e.__dict__.keys())
-    #import traceback
-    #traceback.print_exc()
+except BaseException as e:
     output(e)
     sys.exit(e.returncode if hasattr(e, 'returncode') else 1)
 
 finally:
-    if ret_stream: ret_stream.close()
+    try:
+        if ret_stream: ret_stream.close()
+    except (OSError, BrokenPipeError):
+        pass
 
-# result was an Exec object
-# Doing an exec replaces the process without running any __exit__, finally, or atexit handlers.
-# So we explicitly let all those run before doing the exec()
-import atexit
-atexit._run_exitfuncs()
-result() # FIXME: Who needs to close ret_fd?  Is the exec'ed code going to output to the parent?
+if isinstance(result, Exec):
+    # result was an Exec object
+    # Doing an exec replaces the process without running any __exit__, finally, or atexit handlers.
+    # So we explicitly let all those run before doing the exec()
+    import atexit
+    atexit._run_exitfuncs()
+    result() # FIXME: Who needs to close ret_fd?  Is the exec'ed code going to output to the parent?

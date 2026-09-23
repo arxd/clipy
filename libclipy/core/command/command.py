@@ -1,4 +1,4 @@
-import inspect, importlib, os, subprocess, pickle, atexit, struct, sys
+import inspect, importlib, os, subprocess, pickle, signal, atexit, struct, sys
 from collections import namedtuple
 from .dfn import CommandDfn, HELP
 from .param import Param, Bool, Str
@@ -28,7 +28,7 @@ class Command():
     @staticmethod
     def _unpickle(path):
         module, name = path.rsplit('.',1)
-        return getattr(importlib.import_module(module), name).instance()
+        return getattr(importlib.import_module(module), name)()
 
 
     def __reduce__(self):
@@ -99,7 +99,19 @@ class Command():
 
 
     def each(self, *args, **kwargs):
-        ''' A generator that yields each output of the command
+        ''' A generator that yields each output of the command.
+        1) Open the subprocess
+        2) send cmd,args,kwargs via data pipe
+        3) Listen to out pipe for results from the child
+        4a) The subprocess completed and closed their out pipe
+            5) Wait for the process to close
+            6) Do a useless, redundant _cleanup call
+        4b) Our caller exited the program without reading all of the pipe's values (break)
+            5) atexit calls _cleanup and it sends SIGINT to the child
+            6) The child exits gracefully with KeyboardInturrupt
+        4c) We get a ctl-c SIGINT which raises KeyboardInturrupt 
+            5) We get knocked out of the pipe-reading loop and into the finally
+            6) _cleanup sends a second SIGINT (the original ctl-c also went to the child) but it is ignored because it came so fast
         '''
         venv = type(self).get_venv()
         data_fd = os.pipe() # The data we are sending the child
@@ -116,14 +128,12 @@ class Command():
             raise
         finally:
             # The child has its own copies of these now (or never started at all), so drop ours.
-            # out_fd[0] is the exception: it stays open for the reader below to close.
             os.close(data_fd[0])
             os.close(out_fd[1])
         # We need to register _cleanup atexit instead of relying on the finally of try.
         # The reason is that we are a generator and if our caller breaks out early our finally never gets called
         def _cleanup():
-            # proc.send_signal(SIGINT) -> wait 1s -> proc.send_signal(SIGTERM) -> wait 1s -> proc.send_signal(SIGKILL)
-            proc.kill()
+            proc.send_signal(signal.SIGINT)
             proc.wait()
         atexit.register(_cleanup)
         try:
@@ -183,15 +193,17 @@ class Command():
     # It is worse here though.  An async generator's finally contains awaits, so it can only run
     # while a loop is alive (see run_coro's shutdown_asyncgens) -- unlike a sync generator it can
     # never be rescued by the garbage collector.  So atexit stays the last line of defence, and it
-    # has to work with no loop at all: hence the raw Popen, whose kill()/wait() are synchronous.
+    # has to work with no loop at all: hence the raw Popen, whose signalling and wait are blocking.
         proc = transport.get_extra_info('subprocess')
         def _cleanup():
-            # proc.send_signal(SIGINT) -> wait 1s -> proc.send_signal(SIGTERM) -> wait 1s -> proc.send_signal(SIGKILL)
+            ''' The backstop runs with no event loop, so it waits with a blocking Popen.wait().
+            Same policy as the finally below: SIGINT, then wait for as long as the child needs.
+            '''
             try:
-                proc.kill()
+                proc.send_signal(signal.SIGINT)
                 proc.wait()
             except (ProcessLookupError, ChildProcessError):
-                pass # asyncio's child watcher got there first
+                pass # Already gone, or asyncio's child watcher got there first
         atexit.register(_cleanup)
         reader = asyncio.StreamReader(loop=loop)
         pipe_transport, _ = await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), os.fdopen(out_fd[0], 'rb', 0))
@@ -211,19 +223,28 @@ class Command():
         finally:
             atexit.unregister(_cleanup)
             pipe_transport.close()
-        # While the loop is alive the transport must do the killing.  Reaping the raw Popen here
-        # instead would steal the child from asyncio's watcher, which then fails with ECHILD.
-        # No await: this finally also runs during cancellation, where awaiting would re-raise.
-            if transport.get_returncode() is None: transport.kill()
+        # Ask the child to stop, then wait however long it takes.  SIGINT only: no SIGTERM/SIGKILL
+        # escalation and no timeout, so the child's own __exit__/finally blocks always get to run.
+            if transport.get_returncode() is None:
+                try:
+                    # Not proc.send_signal(), which calls Popen.poll() and can reap the child out
+                    # from under asyncio's watcher thread, leaving it to fail with ECHILD.
+                    os.kill(transport.get_pid(), signal.SIGINT)
+                except ProcessLookupError:
+                    pass # Already gone, just not reaped yet
+                try:
+                    await proc_proto.exited.wait()
+                except asyncio.CancelledError:
+                    # We are unwinding, but the child still gets to finish.  The cancellation has
+                    # been delivered by now, so this second wait suspends normally instead of
+                    # re-raising; a further cancel (a second ctl-C) does get through and gives up.
+                    await proc_proto.exited.wait()
+                    raise
+        # Only now that the child is gone is this safe: close() SIGKILLs a process still running.
+        # It also lets asyncio's watcher be the one to reap, so the Popen never ends up collected
+        # with returncode None -- which would park it in subprocess._active for the next Popen()
+        # to reap, stealing the pid from that thread.
             transport.close()
-        # Let asyncio's waitpid thread report the exit before we leave.  Otherwise the Popen can be
-        # collected with returncode still None, which parks it in subprocess._active for the next
-        # Popen() to reap -- stealing the pid from that thread, which then fails with ECHILD.
-        # We have already killed the child, so this returns promptly.
-            try:
-                await proc_proto.exited.wait()
-            except asyncio.CancelledError:
-                pass # Already unwinding; the kill above is what actually matters
 
 
     def exec(self, *args, **kwargs):
@@ -232,7 +253,7 @@ class Command():
         return Exec(venv=type(self).get_venv(), data={'cmd':self, 'args':args, 'kwargs':kwargs})
 
 
-    def bind(self, *args):
+    def bind_cli(self, *args):
         ''' `args` is a list of string arguments that came from the command line.
         They are parsed and matched to the command's parameters.
         '''
@@ -283,7 +304,7 @@ class Command():
             if not e.subs: raise ExtraArguments(cmd=self, extra=args)
             raise e
     # We found a sub CommandDfn
-        self.sub = sub.instance().bind(*args[1:])
+        self.sub = sub().bind_cli(*args[1:])
 
 
     def args_kwargs(self, *default_args, **default_kwargs):
