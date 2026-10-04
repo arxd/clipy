@@ -1,6 +1,6 @@
 from cli import Command, ConfigVar
 
-default_install_remote = ConfigVar('install_remote The default argument for `remote` when calling the install command')
+default_install_remote = ConfigVar('default_install_remote The default argument for `remote` when calling the install command')
 
 @Command()
 def install(remote=None):

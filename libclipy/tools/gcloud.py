@@ -19,13 +19,13 @@ def port_closed(port):
 class GCloud(SysTool):
     init_defaults = dict(project_id='', zone='')
     sub_commands = ['compute', 'services', 'projects']
-    cmd = ConfigVar('gcloud_path The path to the gcloud executable', default='gcloud')
-    version = ConfigVar('gcloud_version The desired config version for gcloud', default='511')
     version_probe = r'^Google Cloud SDK (?P<v0>\d+).(?P<v1>\d+).(?P<v2>\d+)$'
-    default_project_id = ConfigVar('gcloud_project_id The default project id to use', default='')
-    default_zone = ConfigVar('gcloud_zone The default zone to use', default='')
-    iap_ssh_key = ConfigVar('gcloud_iap_ssh_key The ssh key used when connecting to an instance through an iap tunnel', default='local/iap_ssh_key')
-    instance_cache = ConfigVar('gcloud_instance_cache A json cachefile for instance/zone mappings', default='local/instance_zone_cache.json')
+    cmd = ConfigVar('GCloud.cmd The path to the gcloud executable', default='gcloud')
+    version = ConfigVar('GCloud.version The desired config version for gcloud', default='511')
+    default_project_id = ConfigVar('GCloud.default_project_id The default project id to use', default='')
+    default_zone = ConfigVar('GCloud.default_zone The default zone to use', default='')
+    iap_ssh_key = ConfigVar('GCloud.iap_ssh_key The ssh key used when connecting to an instance through an iap tunnel', default='local/iap_ssh_key')
+    instance_cache = ConfigVar('GCloud.instance_cache A json cachefile for instance/zone mappings', default='local/instance_zone_cache.json')
 
     @classmethod
     def install_help_generic(self):
@@ -75,14 +75,8 @@ class GCloud(SysTool):
         return key
 
 
-    def iap_tunnel(self, **kwargs):
+    def iap(self, **kwargs):
         return IAPTunnel(self, **kwargs)
-
-
-    def __call__(self, *cmd, json=False, **kwargs):
-        cmd = [self.cmd.v, *cmd]
-        if self.project_id: cmd[1:1] = [f'--project', self.project_id]
-        return Cmd(*cmd,'--format=json', **kwargs).on(0,'json') if json else Cmd(cmd=cmd, **kwargs)
 
 
     def instance_to_zone(self, name):
@@ -94,6 +88,12 @@ class GCloud(SysTool):
             with open(self.instance_cache.v, 'w', encoding='utf8') as f: json.dump(data, f, ensure_ascii=False)
             if name not in data: raise UsageError(f"Instance {name!r} not found:  {' '.join(data.keys())}")
             return data[name]
+
+
+    def __call__(self, *cmd, json=False, **kwargs):
+        cmd = [self.cmd.v, *cmd]
+        if self.project_id: cmd[1:1] = [f'--project', self.project_id]
+        return Cmd(*cmd,'--format=json', **kwargs).on(0,'json') if json else Cmd(*cmd, **kwargs)
 
 
 

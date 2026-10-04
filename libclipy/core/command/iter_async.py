@@ -65,7 +65,7 @@ class AsyncIterator(SyncIterator):
 
 
     async def __anext__(self):
-    # Make sure the process is running
+        # Make sure the process is running
         if self._create_proc_task is not None: await self.init()
         try:
             while (v:=await self.next_step()) is _NULL: continue
@@ -83,13 +83,13 @@ class AsyncIterator(SyncIterator):
             if self.returncode != 0:
                 raise CmdError(msg="Non-zero returncode", cmd=self.cmd, returncode=self.returncode, channels=self.channels)
             raise StopAsyncIteration()
-    # Wait for something
+    # Wait for something in the queue
         result = await self._q.get()
         if result[0] not in ('!','$'):
             return result if self._n_read_gen > 1 else result[1]
     # Did our handler throw an exception?
         if result[0] == '!': raise result[1] from None
-    # We got a close event.   We are expecting one from every Read channel and the process exit
+    # We got a close event.  We are expecting one from every Read channel
         self.done = int(self.done) + 1
         return _NULL
 
@@ -107,8 +107,9 @@ class AsyncIterator(SyncIterator):
         if done := not chan.read_some_data():
             self.loop.remove_reader(chan.fd)
             chan.close()
-    # Parse as many values as we can
-        while (v:=chan.parse()) is not _NULL: self._q.put_nowait((chan, v))
+    # Parse as many values as we can if we are ReadGen
+        if isinstance(chan, ReadGen):
+            while (v:=chan.parse()) is not _NULL: self._q.put_nowait((chan, v))
     # Add the close code after we parsed as many values as we could
         if done: self._q.put_nowait(('$', chan))
 

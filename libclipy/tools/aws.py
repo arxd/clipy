@@ -26,9 +26,9 @@ class Aws(SysTool):
 
     sub_commands = ['s3', 's3api', 'greengrassv2', 'iot']
     version_probe = r'^.*aws-cli/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
-    cmd = ConfigVar('aws_path The path to the aws executable', default='aws')
-    version = ConfigVar('aws_version The desired config version for aws', default='2.30')
-    default_profile = ConfigVar('default_profile Profile name corresponding to profiles in ~/.aws/config used when no profile is given explicitly')
+    cmd = ConfigVar('Aws.cmd The path to the aws executable', default='aws')
+    version = ConfigVar('Aws.version The desired config version for aws', default='2.30')
+    default_profile = ConfigVar('Aws.default_profile Profile name corresponding to profiles in ~/.aws/config used when no profile is given explicitly')
 
 
     def __init__(self, profile =None):

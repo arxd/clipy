@@ -7,8 +7,8 @@ from libclipy.core.pretty import CLR
 class Docker(SysTool):
     sub_commands = ['run', 'pull', 'stop', 'rm', 'logs']
     version_probe = r'^\D* (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
-    cmd = ConfigVar('docker_path The path to the docker executable', default='docker')
-    version = ConfigVar('docker_version The desired config version for aws', default='28.0')
+    cmd = ConfigVar('Docker.cmd The path to the docker executable', default='docker')
+    version = ConfigVar('Docker.version The desired config version for aws', default='28.0')
     
     
     @classmethod

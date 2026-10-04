@@ -72,7 +72,11 @@ def diff(project_name='', verbose__v=False):
     else:
         for proj in Project.all():
             kinds = {}
-            clean = (proj.info['version'] == version)
+            try:
+                clean = (proj.info['version'] == version)
+            except FileNotFoundError:
+                print(f"{CLR.r}Project {proj} can't be found{CLR.x}")
+                continue
             for f,d in proj.diff().items():
                 clean = clean and not d.status
                 kinds[d.status] = kinds.get(d.status, 0) + 1

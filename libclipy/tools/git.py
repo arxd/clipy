@@ -14,8 +14,8 @@ GitRef = namedtuple('GitRef', ('name', 'short', 'type', 'size', 'hash', 'kind', 
 class Git(SysTool):
     sub_commands = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
     version_probe = r'^git version (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
-    cmd = ConfigVar('git_path The path to the git executable', default='git')
-    version = ConfigVar('git_version The desired config version for git', default='2')
+    cmd = ConfigVar('Git.cmd The path to the git executable', default='git')
+    version = ConfigVar('Git.version The desired config version for git', default='2')
 
     def __init__(self, repo='.'):
         self.repo = Path(repo).resolve()

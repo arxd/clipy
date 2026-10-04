@@ -76,9 +76,9 @@ class Server():
 class Nginx(SysTool):
 
     version_probe = (lambda s: (s.cmd.v, '-v')), r'^.*nginx/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
-    cmd = ConfigVar('nginx_path The path to the nginx executable', default='nginx')
-    version = ConfigVar('nginx_version The required version of nginx', default='1.29')
-    prefix = ConfigVar('nginx_prefix The base directory (resolved relative to work_root) for nginx files (config, logs, etc.)', default='nginx')
+    cmd = ConfigVar('Nginx.cmd The path to the nginx executable', default='nginx')
+    version = ConfigVar('Nginx.version The required version of nginx', default='1.29')
+    prefix = ConfigVar('Nginx.prefix The base directory (resolved relative to work_root) for nginx files (config, logs, etc.)', default='nginx')
     
     @classmethod
     def install_help_generic(self):

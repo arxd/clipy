@@ -197,9 +197,9 @@ class Route(EObj):
 class Envoy(SysTool):
     sub_commands = []
     version_probe = r'^envoy\s+version.*?/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)/.*$'
-    cmd = ConfigVar('envoy_path The path to the envoy executable', default='envoy')
-    version = ConfigVar('envoy_version The desired version for envoy', default='1.30')
-    config = ConfigVar('envoy_config The location of the envoy config file (resolved relative to work_root', default='envoy/config.json')
+    cmd = ConfigVar('Envoy.cmd The path to the envoy executable', default='envoy')
+    version = ConfigVar('Envoy.version The desired version for envoy', default='1.30')
+    config = ConfigVar('Envoy.config The location of the envoy config file (resolved relative to work_root', default='envoy/config.json')
 
     @classmethod
     def install_help_generic(self):

@@ -17,8 +17,10 @@ def initialize_config(config_data):
         except AttributeError: pass
 # Set config_data
     for k,v in config_data.items():
-        module, name = k.split('::')
-        getattr(importlib.import_module(module), name).v = v
+        module, names = k.split('::')
+        obj = importlib.import_module(module)
+        for name in names.split('.'): obj = getattr(obj, name)
+        obj.v = v
 # Run targets
     for t in config.target.v:
         if hasattr(config, t): getattr(config, t).apply()
@@ -58,12 +60,9 @@ class ConfigVar():
         if self.name: self.cvar = contextvars.ContextVar(self.name)
 
 
+    @property
     def path(self):
-        module = sys.modules.get(self.module)
-        for d in dir(module):
-            o = getattr(module, d)
-            if o is self: return f'{self.module}::{d}'
-        raise ValueError(f"Couldn't find {self} in {self.module}")
+        return f'{self.module}::{self.name}'
     
 
     def __str__(self):
@@ -129,7 +128,6 @@ class ConfigVar():
         type(self)._set.add(self)
 
 
-    
 
 @ConfigVar()
 def target(v='local'):

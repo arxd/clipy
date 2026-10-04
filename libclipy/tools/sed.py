@@ -6,7 +6,7 @@ class Sed(SysTool):
     '''
     version = None
     version_probe = None
-    cmd = ConfigVar('sed_path The path to the sed executable', default='sed')
+    cmd = ConfigVar('Sed.cmd The path to the sed executable', default='sed')
 
     def sub(self, path, *patterns):
         patterns = [item for p in patterns for item in ('-e', p)]

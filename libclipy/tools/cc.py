@@ -11,8 +11,8 @@ class CC(SysTool):
     '''
     sub_commands = []
     version_probe = r'^.*(?P<cmd>gcc|clang).*?(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
-    cmd = ConfigVar('cc_path The path to the compiler executable', default='')
-    version = ConfigVar('cc_version The desired c compiler version clang or gcc', default='gcc/15 clang/17')
+    cmd = ConfigVar('CC.cmd The path to the compiler executable', default='')
+    version = ConfigVar('CC.version The desired c compiler version clang or gcc', default='gcc/15 clang/17')
     
     @classmethod
     def verify(self, version=None):

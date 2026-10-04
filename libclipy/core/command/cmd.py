@@ -261,6 +261,7 @@ class Cmd():
             await iter.close()
 
 
+    # FIXME Move this to a better location
     @classmethod
     def entry_point(self, venv_path, *, pipe=False, **cmd_info):
         from libclipy.core.config import ConfigVar, out_fd
@@ -270,6 +271,6 @@ class Cmd():
             p = os.pipe()
             cmd = ReadPickle(src='cmd', fd=p[0], child_fd=p[1])
             out_fd.for_child(cmd.child_fd)
-        mm = Mem(src='mm', data=({var.path():(var.v_child if hasattr(var, 'v_child') else var.v) for var in ConfigVar._set}, cmd_info))
+        mm = Mem(src='mm', data=({var.path:(var.v_child if hasattr(var, 'v_child') else var.v) for var in ConfigVar._set}, cmd_info))
         each_args = {} if not pipe else dict(cmd=cmd, mm=mm)
         return Cmd(venv_path, '-I', 'libclipy/core/entry_point.py', mm.size, mm.child_fd, project_root), each_args

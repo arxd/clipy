@@ -13,8 +13,8 @@ class Rsync(SysTool):
         rsync.sync('bob', 'file1.txt', 'folder/file2.txt', 'empty_folder/')
     '''    
     version_probe = r'^rsync\s+version\s+(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)'
-    cmd = ConfigVar('rsync_path The path to the rsync executable', default='rsync')
-    version = ConfigVar('rsync_version The desired config version for rsync', default='3')
+    cmd = ConfigVar('Rsync.cmd The path to the rsync executable', default='rsync')
+    version = ConfigVar('Rsync.version The desired config version for rsync', default='3')
 
 
     def __init__(self, remote=None, args=None, links=True, i=None, host_check=False):

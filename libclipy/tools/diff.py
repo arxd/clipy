@@ -127,7 +127,7 @@ class Diff(SysTool):
     '''
     version = None
     version_probe = None
-    cmd = ConfigVar('diff_path The path to the diff executable', default='diff')
+    cmd = ConfigVar('Diff.cmd The path to the diff executable', default='diff')
 
 
     def compare(self, a, b, path=None):

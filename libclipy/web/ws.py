@@ -4,7 +4,7 @@ from aiohttp import web
 
 
 class Server():
-    protocol = ConfigVar('server_protocol The first of the websocket protocols', default='v0')
+    protocol = ConfigVar('Server.protocol The first of the websocket protocols', default='v0')
 
     def __init__(self, *, auth=None):
         self.app = web.Application()

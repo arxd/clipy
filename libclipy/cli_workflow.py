@@ -1,7 +1,7 @@
 from cli import Command, ConfigVar
 from libclipy.core.pretty import CLR
 
-codes = ConfigVar('workflow_codes The definition of different workflow codes and their files')
+codes = ConfigVar('codes The definition of different workflow codes and their files')
 
 @Command()
 def workflow(code='', /, *, list__l=False):

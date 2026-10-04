@@ -11,4 +11,5 @@ def local():
         '': ('', ['local', 'config.py']),
         'd': ('documentation', ['docs', 'README.rst']),
         'c': ('libclipy', ['libclipy', 'cli.py']),
+        'w': ('web', ['web']),
     }

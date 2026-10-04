@@ -9,10 +9,10 @@ class OpenSSL(SysTool):
 
     sub_commands = ['req', 'x509', 'genrsa', 'rand', 'dgst']
     version_probe = (lambda s: (s.cmd.v, 'version')), r'^(Open|Libre)SSL (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
-    cmd = ConfigVar('openssl_path The path to the openssl executable', default='openssl')
-    version = ConfigVar('openssl_version The required version of openssl', default='3.3')
-    ca = ConfigVar('openssl_ca The default CA to use when creating a server certificate', default='~/.ssh/ca_localhost')
-    days = ConfigVar('openssl_server_days The default number of days for a server certificate', default=28)
+    cmd = ConfigVar('OpenSSL.cmd The path to the openssl executable', default='openssl')
+    version = ConfigVar('OpenSSL.version The required version of openssl', default='3.3')
+    ca = ConfigVar('OpenSSL.ca The default CA to use when creating a server certificate', default='~/.ssh/ca_localhost')
+    days = ConfigVar('OpenSSL.days The default number of days for a server certificate', default=28)
                      
     @classmethod
     def install_help_generic(self):

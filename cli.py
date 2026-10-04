@@ -3,7 +3,7 @@ import sys, os, pathlib
 
 # Program constants
 name = 'clipy'
-version = '1.0.1'
+version = '1.1.0'
 env_prefix = 'CLIPY_'
 
 # Move to the project root and add the project root to sys.path
@@ -52,12 +52,11 @@ def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=
     if version:
         from cli import version, name
         return dict(name=name, version=version)
-    from libclipy.core.command.errors import HelpWanted
+    from libclipy.core.errors import HelpWanted
     raise HelpWanted(cmd=main())
 
 if __name__ == '__main__': Cmd.entry_point(main.bin_path/'python', argv=sys.argv[1:])[0].exec()()
 # Everything below here is only called when cli is imported (not executed)
 from libclipy.core.config import ConfigVar, Target
 from libclipy.core.errors import UsageError, PrettyException
-#from libclipy.tools.run import run, RunException
 from libclipy.core.pretty import print, CLR
