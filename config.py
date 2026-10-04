@@ -1,7 +1,7 @@
 from cli import Target, ConfigVar
 from libclipy.cli_grep import grep_groups
 from libclipy.cli_workflow import codes
-from libclipy.core.config import verbosity, work_root, target
+from libclipy.core.config import verbosity, work_root, format_out, target
 
 @Target()
 def local():

@@ -133,6 +133,11 @@ def sync(project_name='', *, force__f=False, reverse__r=False):
             print(f"Delete deprecated {CLR.r}{d.path}{CLR.x}?")
             if (pf:=proj.file(f)).exists() and input("[d]elete / keep: ") == 'd':
                 pf.unlink()
+            # Try to remove empty folders
+                while True:
+                    try: pf.parent.rmdir()
+                    except OSError: break
+                    pf = pf.parent
             continue
     # Do an actual diff of the files
         x = diff.compare(proj.file(f), clipy.file(f), path=f)

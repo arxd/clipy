@@ -62,7 +62,7 @@ class Venv():
     def __call__(self, cmd):
         ''' This venv can be used as a decorator to a `Command`
         '''
-        cmd.venv.append(self)
+        cmd.venv.insert(0, self)
         return cmd
     
 

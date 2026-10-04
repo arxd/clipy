@@ -4,6 +4,7 @@ from cli import Cmd, Command, Venv, UsageError
 from libclipy.core.errors import CmdError
 from libclipy.tools.git import Git
 
+# FIXME: Clean up this whole file
 
 DIST = Path('docs/_dist')
 
@@ -36,7 +37,7 @@ def view(section__s='', *, local__l=False):
         #build()
         #section = find_section(section__s)
         #assert(section), f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build"
-    url = 'file://' + section
+    url = f"file://{section.absolute()}"
     print(f'Opening documentation in the browser~lang ja~ブラウザでドキュメントを開く', '...', ['']*2, url)
     try:
         Cmd('open', '-a', 'Google Chrome', url).call(',,raise')

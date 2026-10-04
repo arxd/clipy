@@ -139,7 +139,7 @@ else: # The root command's results go to stdout/stderr, but how should we format
         output = lambda v: sys.stdout.write(base64.b64encode(pickle.dumps(v, protocol=5)).decode('ascii'))
     elif format_out.v == 'json': # Json
         import json
-        output = lambda v: sys.stdout.write(json.dumps(v))
+        output = lambda v: sys.stdout.write(json.dumps(v)+'\n')
     else: # pretty
         output = lambda v: v is not None and print.pretty(v)
 

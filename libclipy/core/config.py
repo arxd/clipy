@@ -7,10 +7,9 @@ UNSET = type('UNSET',tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: Fal
 def initialize_config(config_data):
     import config, importlib, cli
 # Set environment variables
-    prefix = cli.name.upper()+'_'
     for k, value in os.environ.items():
-        if not k.startswith(prefix): continue
-        k = k[len(prefix):].lower()
+        if not k.startswith(cli.env_prefix): continue
+        k = k[len(cli.env_prefix):].lower()
         try:
             cfg_var = getattr(config, k)
             if isinstance(cfg_var, ConfigVar):
@@ -148,10 +147,10 @@ class WorkRoot(ConfigVar):
         from cli import project_root
         return project_root / self.v / sub_path
     
-    def open(self, sub_path, mode='r'):
+    def open(self, sub_path, mode='r', *args, **kwargs):
         path = self.path(sub_path)
         if 'w' in mode or 'a' in mode or 'x' in mode:
             path.parent.mkdir(parents=True, exist_ok=True)
-        return open(str(path), mode)
+        return open(str(path), mode, *args, **kwargs)
 
 work_root = WorkRoot("work_root A path to a project-specific temporary work directory", default='local', cast=Path)
