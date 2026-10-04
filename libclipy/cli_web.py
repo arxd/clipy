@@ -17,10 +17,10 @@ def nginx():
     server.loc('/', 'try_files $uri /index.html')
     nginx.config()
     print(f"https://{name}"+f":{nginx.port}"*(nginx.port!=80))
-    return nginx.run()
+    return nginx.run().exec()
 
 
-@Venv(requirements='wcwidth aiohttp')
+@Venv('cli::main', req='aiohttp')
 @Command()
 def server():
     ''' Run the websocket server
@@ -34,7 +34,7 @@ async def run_():
     ''' Run both nginx and the webserver
     '''
     import asyncio
-    group = asyncio.gather(server().wait(), nginx().wait())
+    group = asyncio.gather(server().call_async(), nginx().call_async())
     try:
         await group
     finally:

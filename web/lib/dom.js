@@ -98,13 +98,11 @@ function _parse_arg(el, arg) {
 /// The first argument creates the element.
 ///  * createElement() if a string tag-name is given
 ///  * Parsed html template if the string starts with a `<`
-///  * <div> element with attributes if an object is given (without a tag attribute)
+///  * <div> element with attributes if a dict is given (without a tag attribute)
 ///  
 /// Subsequent arguments modify the inital element.
 ///  * Append a textNode if a string is given
-///  * Add element attributes if an object (without a tag attribute) is given
-///  * Append a child element (posibly from another E() call)
-///  * Append a child element from an object containing a tag attribute
+///  * Append a child element from a dict containing a tag attribute
 /// 
 /// E('span')  <span></span>
 /// E('span', 'hello', 'world')  <span>helloworld</span>

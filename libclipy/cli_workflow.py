@@ -26,7 +26,7 @@ def workflow(code='', /, *, list__l=False):
         if 'a' in code or c in code: show_files += v[1]
 # Get the settings
     try:
-        with open('.vscode/settings.json') as f:
+        with open('.vscode/settings.json', 'r', encoding='utf8') as f:
             settings = json.load(f)
     except FileNotFoundError:
         settings = {}
@@ -40,5 +40,12 @@ def workflow(code='', /, *, list__l=False):
         settings['files.exclude'] = dict(exclude)
 # Save
     os.makedirs('.vscode', exist_ok=True)
-    with open('.vscode/settings.json', 'w') as f:
-        json.dump(settings, f, indent=2)
+    with open('.vscode/settings.json', 'w', encoding='utf8') as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+
+
+@Command()
+def venv():
+    ''' Clean and upgrade the virtual environments created in ``.python`` and cached in ``core/info.json``
+    '''
+    raise NotImplementedError()

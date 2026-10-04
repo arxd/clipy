@@ -1,5 +1,5 @@
 import types
-from .errors import ParseError
+from ..errors import ParseError
 
 
 def _is_kw(s):

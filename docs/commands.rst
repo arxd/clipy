@@ -295,6 +295,7 @@ When using sub-commands it is possible to give the shortest unambiguous prefix o
         pass
 
 .. code-block:: console
+    
     $ ./cli.py foo bas
     Command prefix 'bas' matches multiple commands: baseball basketball
 

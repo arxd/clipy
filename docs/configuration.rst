@@ -5,19 +5,18 @@ Configuration
 ==================
 
 Any function needs parameters.
-There are explicit parameters defined for the function, but there are also ambient parameters (global variables) that the function has access to.
+There are explicit parameters defined for the function, but there are also ambient parameters (global variables) that the function has access to through imports.
+These global variables are context-aware ``contextvars.ContextVar`` derived `ConfigVar()` objects.
 
-These ambient values have various levels of mutability and configurability.
+The value of any variable is influenced from a number of places:
 
-1. Constant:  Example, ``name``, ``version``.  These are defined in ``cli.py`` and are the same across `target`s and `system`s.
-    To change them you need to change the source code.
+1. The default value
+2. The current `@Target() <Target.__call__>` (which is influenced by the `system`)
+3. CLIPY_XYZ environment variables. This usually overrides the target's value, unless the target sets the value with the ``.v`` syntax.
+4. Parent command's modifications
 
-2. Environment variables:  These have the ability to be set at the OS environment level so they feel more like constants (semi-constant), even though they have runtime-mutability.
-    Their limited storage capacity, string-type, and flat namespace are inconvenient.
-    Their main benefit is that they carry over to sub-command processes.
-
-3. `ConfigVar`:  These are python's context-aware ``contextvars.ContextVar`` objects.  They have proper namespace separation and any python type.  The downside is that they don't survive across to sub-command processes.
-
+Those are listed in order of increasing knowledge.
+The default value knows the least about what the value should be, and parent commands are operating with the most knowledge. 
 
 
 .. _target:
@@ -26,10 +25,12 @@ Target
 ========
 
 A target is a certain configuration of `ConfigVar`\ s for certain workflows or deployment environments such as staging, or production.
-The actual target name is set as an environment variable and can be changed more dynamically as a parameter to cli.py. ``./cli.py -t staging ...`
+The target is a tuple of names corrosponding to `@Target() <Target.__call__>` decorated functions in `config.py`.
 
-In practice, a target is just a function defined in cli.py and decorated with `@Target() <Target.__call__>`
+Each function in the target tuple is applied in order.
+The function should change the ``.default`` value of a configvar, rather than setting its value ``.v`` so that environment variables can override them.
 
+The target can be set from an environment variable ``CLIPY_TARGET`` or when calling a command ``./cli.py -t staging.test ...`
 
 .. autoclass:: libclipy.core.config.Target
     :members: __call__
@@ -60,16 +61,9 @@ For other systems, like production, it may be fine if you can't import all comma
 Environment Variables
 =======================
 
-Environment variables for the project are given a project-specific prefix defined in cli.py, ``env = Env(prefix,...)``.
-These should be thought of as high-level semi-constant (bashrc) configuration.
-To overcome the limitation of only being able to store short strings, and to benefit from the ability to carry configuration variables over to sub-command processes, private variables are used.
+Environment variables for the project are given a project-specific prefix defined in cli.py: ``env_prefix``.
 
-A private environment variable is one that starts with an underscore, ``Env('MY_', _private=(1,2))``.
-When set with a value, private variables are not actually put in the os environment.
-They are transferred to sub-command processes via a pipe, so they can be any pickleable type.
-
-
-.. autoclass:: libclipy.core.venv.Env
+These have higher priority than settings in ``config.py`` but lower than command's modifications (from users passing arguments on the command line).
 
 
 
@@ -119,12 +113,44 @@ The virtual environment configuration can be set on the command with a decorator
 
 .. code-block:: python
 
-    @Venv(python='3.10 3.11', requirements='numpy matplotlib', system_packages=True, system='dev prd')
+    @Venv(python='3.10 3.11', req='numpy matplotlib', system_packages=True, system='dev prd')
     @Command()
     def foo():
         ...
 
-If a `Venv` is not given then the parent command's environment is used.
+If a `Venv` is not given then the main command's environment is used.
+It might be sensible for a command to always have its venv be derived from its parent, but that is not possible.
+A command doesn't have a clear parent because it can be listed as a child of multiple parents and be called manually from anywhere.
+Instead you can set the first parameter of ``@Venv`` to be a command (or command path string) that will be used as a base venv.
+Your ``req`` get appended to the base's and you can override the other parameters as needed.
+
+.. code-block:: python
+
+    @Venv('libclipy.cli_foo::foo', req='somelib>2', system='dev') # Uses the command string path
+    @Venv(foo, req='somelib>3', system='prd') # Uses the command object
+    def bar():
+        ...
+
+The venv that matches the `system` (set through the environment `CLIPY_SYSTEM`) is chosen.
+
+You can also set a global venv at the top of your source file that will get applied to all commands defined in that file.
+It gets applied *after* any Venv decorations.
+
+.. code-block:: python
+
+    __venv__ = Venv(python='>3.14')
+
+    #@Venv(python='>3.14')
+    @Command()
+    def foo():
+        ...
+
+    @Venv('cli::main', system='dev')
+    #@Venv(python='>3.14')
+    @Command()
+    def bar():
+        ...
+
 
 .. autoclass:: libclipy.core.venv.Venv
     :members: __call__

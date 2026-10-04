@@ -6,8 +6,11 @@ references docs/issues.rst (docs/commands.rst review).
 '''
 import pytest
 from .command import Command
-from .errors import *
+from ..venv import Venv
+from ..errors import *
 from .param import Param, ParamType
+
+__venv__ = Venv('libclipy.cli_testing::test')
 
 
 def run(cmd, *argv):
@@ -565,9 +568,9 @@ def test_doc_generator_async_count():
 
 @pytest.mark.asyncio
 async def test_doc_generator_wait_collects_list():
-    ''' wait() is documented to collect generator results into a list '''
-    assert(await gen_count_sync().bind_cli('3').wait() == ({'v':'A'}, {'v':'B'}, {'v':'C'}))
-    assert(await gen_count_async().bind_cli('3', 'gen-lower').wait() == ('a', 'b', 'c'))
+    ''' call_async() is documented to collect generator results into a list '''
+    assert(await gen_count_sync().bind_cli('3').call_async() == ({'v':'A'}, {'v':'B'}, {'v':'C'}))
+    assert(await gen_count_async().bind_cli('3', 'gen-lower').call_async() == ('a', 'b', 'c'))
 
 
 # ---------------------------------------------------------------------------

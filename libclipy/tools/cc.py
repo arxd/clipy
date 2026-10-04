@@ -1,12 +1,13 @@
 import re
 from collections import namedtuple
 from pathlib import Path
-from cli import UsageError, ConfigVar, CLR
+from cli import Cmd, ConfigVar, CLR
 from .sys_tool import SysTool, MissingTool
 
 
 class CC(SysTool):
     ''' clang/gcc c compiler
+    FIXME: separate parse_errors and parse_deps.  Use the returncode to make sure there is at least one err returned (to reflect the returncode)
     '''
     sub_commands = []
     version_probe = r'^.*(?P<cmd>gcc|clang).*?(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
@@ -39,15 +40,15 @@ class CC(SysTool):
             raise err
     
 
-    def prepare_call(self, *cmd, **kwargs):
-        return (self.found_cmd, *cmd), kwargs
+    def __call__(self, *cmd, **kwargs):
+        return Cmd(self.found_cmd, *cmd, **kwargs)
 
 
     def compile(self, *, src, obj, include=None, defs=None):
         args = ['-fdiagnostics-color=always' if self.is_gcc else '-fcolor-diagnostics']
         if defs: cmd += [f'-D{k}' if v == 1 else f'-D{k}={v!r}' for k,v in defs.items()]
         if include: cmd += [f'-I{i}' for i in include]
-        out = self('-H', '-c', src, '-o', obj, *args, if_0='utf8,utf8,', if_1='utf8,utf8,')
+        out = self('-H', '-c', src, '-o', obj, *args).on([0,1],'utf8,utf8').call()
         lines = (out[0] + out[1]).split('\n')
         return self.parse_errors(lines)
 

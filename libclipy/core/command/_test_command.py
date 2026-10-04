@@ -1,7 +1,11 @@
 import pytest, asyncio
 from .command import Command
-from .errors import *
+from ..venv import Venv
+from ..errors import *
 from .param import Param, ParamType
+
+__venv__ = Venv('libclipy.cli_testing::test')
+
 
 
 def see_kw(kwargs):
@@ -583,6 +587,7 @@ async def cleanup_marker_cmd(marker, loops:int=3):
     ''' Writes a marker from its finally block so the parent can prove the child was asked to stop
     and given time to clean up, rather than being SIGKILLed out from under itself.
     '''
+    import os
     try:
         for i in range(loops):
             await asyncio.sleep(0.05)
@@ -602,13 +607,14 @@ async def chatty_generator_cmd(loops:int, _size:int=100000):
         yield 'x' * _size
 
 
+
 @pytest.mark.asyncio
 async def test_each_async_call():
-    ''' wait() collects each_async() the same way __call__() collects each() '''
-    assert(await async_fn().bind_cli('3').wait() == '3')
-    assert(await implicit_generator_cmd().bind_cli('0','upper').wait() == Command.no_return)
-    assert(await implicit_generator_cmd().bind_cli('1','upper').wait() == 'ZERO')
-    assert(await implicit_generator_cmd().bind_cli('2','upper').wait() == ('ZERO','ONE'))
+    ''' call_async() collects each_async() the same way __call__() collects each() '''
+    assert(await async_fn().bind_cli('3').call_async() == '3')
+    assert(await implicit_generator_cmd().bind_cli('0','upper').call_async() == Command.no_return)
+    assert(await implicit_generator_cmd().bind_cli('1','upper').call_async() == 'ZERO')
+    assert(await implicit_generator_cmd().bind_cli('2','upper').call_async() == ('ZERO','ONE'))
 
 
 @pytest.mark.asyncio
@@ -635,7 +641,7 @@ async def test_each_async_arrives_incrementally():
 async def test_each_async_big_frame():
     ''' A record larger than the pipe buffer is reassembled from many reads '''
     size = 1024*1024
-    assert(await big_result_cmd().bind_cli(str(size)).wait() == 'x'*size)
+    assert(await big_result_cmd().bind_cli(str(size)).call_async() == 'x'*size)
 
 
 @pytest.mark.asyncio
@@ -666,7 +672,7 @@ def test_each_no_fd_leak():
 @pytest.mark.asyncio
 async def test_each_async_no_fd_leak():
     ''' each_async() must close its own ends of the pipes it hands to the child '''
-    cmd = lambda: paced_generator_cmd().bind_cli('1','upper').wait(_delay=0)
+    cmd = lambda: paced_generator_cmd().bind_cli('1','upper').call_async(_delay=0)
     await cmd() # Warm up, so one-time allocations aren't counted as a leak
     before = _open_fd_count()
     for _ in range(3): await cmd()
@@ -674,12 +680,12 @@ async def test_each_async_no_fd_leak():
 
 
 @pytest.mark.asyncio
-async def test_each_async_break_lets_child_clean_up():
+async def test_each_async_break_lets_child_clean_up(tmp_path):
     ''' Abandoning the generator sends SIGINT and waits, so the child's own finally gets to run.
     A SIGKILL would leave no marker behind.
     '''
-    import tempfile, pathlib
-    marker = pathlib.Path(tempfile.mkdtemp())/'marker'
+    import os
+    marker = tmp_path/'marker'
     agen = cleanup_marker_cmd().bind_cli(str(marker), '3', 'upper').each_async()
     async for x in agen:
         break
@@ -727,4 +733,10 @@ def test_exceptions_deep():
 @pytest.mark.skip('implement')
 def test_exceptions_outside_try():
     ''' What happen to exceptions that are thrown in entry_point outside of the try section?
+    '''
+
+
+@pytest.mark.skip('implement')
+def test_exceptions_outside_try():
+    ''' make sure the out_fd can be passed on to a child (exec only?) and the child can use it to output to the parent's parent
     '''

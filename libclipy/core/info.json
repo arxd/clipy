@@ -1,1 +1,69 @@
-{"features": ["dep", "aws", "diff", "docker", "gcloud", "cc", "make", "rsync", "sed", "envoy", "nginx", "web", "openssl", "docs", "cli.grep", "cli.testing", "cli.install", "cli.workflow"]}
+{
+    "features": [
+        "dep",
+        "aws",
+        "diff",
+        "docker",
+        "gcloud",
+        "cc",
+        "make",
+        "rsync",
+        "sed",
+        "envoy",
+        "nginx",
+        "web",
+        "openssl",
+        "docs",
+        "cli.grep",
+        "cli.testing",
+        "cli.install",
+        "cli.workflow"
+    ],
+    "venvs": {
+        "251b9a698f6e478b8abd62cf71e6ff7f59023969": {
+            "folder": "8b4ba002e5287838e5b081ffaa04dc7c",
+            "req": [
+                "wcwidth==0.9.1"
+            ]
+        },
+        "5d9310337928eb181ee279bfcc85c9edbe205415": {
+            "folder": "1905f4ff03a0caadca7d770f816859ec",
+            "req": [
+                "alabaster==0.7.16",
+                "babel==2.18.0",
+                "certifi==2026.7.22",
+                "charset-normalizer==3.5.2",
+                "docutils==0.21.2",
+                "idna==3.20",
+                "imagesize==1.5.0",
+                "importlib-metadata==8.7.1",
+                "jinja2==3.1.6",
+                "markdown-it-py==3.0.0",
+                "markupsafe==3.0.4",
+                "mdit-py-plugins==0.4.2",
+                "mdurl==0.1.2",
+                "myst-parser==3.0.1",
+                "packaging==26.3",
+                "pygments==2.21.0",
+                "pyyaml==6.0.3",
+                "requests==2.32.5",
+                "snowballstemmer==3.1.1",
+                "sphinx==7.4.7",
+                "sphinx-markdown-builder==0.6.11",
+                "sphinx-rtd-theme==3.1.0",
+                "sphinxcontrib-applehelp==2.0.0",
+                "sphinxcontrib-devhelp==2.0.0",
+                "sphinxcontrib-htmlhelp==2.1.0",
+                "sphinxcontrib-jquery==4.1",
+                "sphinxcontrib-jsmath==1.0.1",
+                "sphinxcontrib-mermaid==1.2.3",
+                "sphinxcontrib-qthelp==2.0.0",
+                "sphinxcontrib-serializinghtml==2.0.0",
+                "tabulate==0.9.0",
+                "tomli==2.4.1",
+                "urllib3==2.6.3",
+                "zipp==3.23.1"
+            ]
+        }
+    }
+}

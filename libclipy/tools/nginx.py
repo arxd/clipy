@@ -78,17 +78,18 @@ class Nginx(SysTool):
     version_probe = (lambda s: (s.cmd.v, '-v')), r'^.*nginx/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
     cmd = ConfigVar('nginx_path The path to the nginx executable', default='nginx')
     version = ConfigVar('nginx_version The required version of nginx', default='1.29')
-    prefix = ConfigVar('nginx_prefix The base directory for nginx files (config, logs, etc.)', default='local/nginx')
-                       
+    prefix = ConfigVar('nginx_prefix The base directory (resolved relative to work_root) for nginx files (config, logs, etc.)', default='nginx')
+    
     @classmethod
     def install_help_generic(self):
         return ['$ brew install nginx']
 
 
     def __init__(self, **kwargs):
+        from config import work_root
         self.cfg = dict(workers=1, port=8080, servers={}, no_cache=True, http=[], upstreams={}, max_body_size='128k')
         self.cfg.update(kwargs)
-        self.prefix = Path(Nginx.prefix.v)
+        self.prefix = work_root.path(Nginx.prefix.v)
         self.prefix.mkdir(parents=True, exist_ok=True)
         if not (self.prefix/'mime.types').exists():
             import urllib.request
@@ -153,9 +154,8 @@ class Nginx(SysTool):
                     yield ' '*4*depth + '}\n'
                 else:
                     yield ' '*4*depth + l + ';\n'
-        with open(self.prefix/'nginx.conf', 'w') as f:
-            f.write(''.join(config_lines(cfg)))
+        (self.prefix/'nginx.conf').write_text(''.join(config_lines(cfg)))
     
 
     def run(self):
-        return self.exec('-c', self.prefix/'nginx.conf', '-p', Path.cwd(), '-e', 'stderr')
+        return self('-c', self.prefix/'nginx.conf', '-p', Path.cwd(), '-e', 'stderr')

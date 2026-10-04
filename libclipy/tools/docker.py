@@ -6,7 +6,6 @@ from libclipy.core.pretty import CLR
 
 class Docker(SysTool):
     sub_commands = ['run', 'pull', 'stop', 'rm', 'logs']
-    #version_re = r'^\D* (?P<v0>\d+)\.(?P<v1>\d+)\.\d+.*$'
     version_probe = r'^\D* (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
     cmd = ConfigVar('docker_path The path to the docker executable', default='docker')
     version = ConfigVar('docker_version The desired config version for aws', default='28.0')
@@ -19,7 +18,7 @@ class Docker(SysTool):
 
     def _json_list(self, key, *args):
         all = {}
-        for line in self(*args, if_0='utf8,,', msg=None).split('\n'):
+        for line in self(*args).call('utf8').split('\n'):
             if not line: continue
             line = json.loads(line)
             all[line[key]] = line
@@ -55,7 +54,7 @@ class Docker(SysTool):
                 old_images.append(img['ID'])
     # Delete old images
         if remove_old and old_images:
-            Docker()('rmi', *old_images, msg=f"{CLR.y}Removing {len(old_images)} old image(s){CLR.x}")
+            self('rmi', *old_images).say(f"{CLR.y}Removing {len(old_images)} old image(s){CLR.x}").call()
     # If we don't have an image then create it
         if not image:
             os.environ['DOCKER_BUILDKIT'] = '1'
@@ -64,12 +63,12 @@ class Docker(SysTool):
             platform = os.uname().machine
             if platform != 'arm64': platform = 'amd64'
             cmd += [f'--platform=linux/{platform}']
-            self(*cmd, msg=f"Building image: {CLR.y}{name}{CLR.x}", stdin='\n'.join(dockerfile))
+            self(*cmd).say(f"Building image: {CLR.y}{name}{CLR.x}", stdin='\n'.join(dockerfile)).call()
             image = self.images(name_tag)[name]
         return image
 
 
     def ensure_volume(self, name):
         if not self.volumes(name):
-            self('volume', 'create', name, msg=f"Creating persistent volume: {CLR.y}{name!r}{CLR.x}")
+            self('volume', 'create', name).say(f"Creating persistent volume: {CLR.y}{name!r}{CLR.x}").call()
         return name

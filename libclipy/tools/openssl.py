@@ -1,6 +1,6 @@
 import sys, re, socket, tempfile
 from datetime import datetime
-from cli import ConfigVar
+from cli import ConfigVar, Cmd
 from .sys_tool import SysTool
 from pathlib import Path
 
@@ -24,16 +24,16 @@ class OpenSSL(SysTool):
         return self.version_probe_result.startswith('LibreSSL')
 
 
-    def inspect(self, prefix, mode='-subject', **kwargs):
+    def inspect(self, prefix, mode='-subject'):
         sep = '/' if self.is_libre else ', '
-        v = self.x509('-in', f'{prefix}.pem', mode, '-noout', msg=None, if_0='utf8,,', if_1='null,null,', **kwargs)
+        v = self.x509('-in', f'{prefix}.pem', mode, '-noout').on(0,'utf8').on(1,'null,null').call()
         if v is None: return
         parts = dict(map(str.strip, x.split('=')) for x in v[len(mode):].split(sep) if '=' in x)
         return parts
 
 
     def expires(self, prefix):
-        v = self.x509('-enddate','-noout','-in', f'{prefix}.pem', msg=None, if_0='utf8,,', if_1='null,null,')
+        v = self.x509('-enddate','-noout','-in', f'{prefix}.pem').on(0,'utf8').on(1,'null,null').call()
         if v is None: return
         return datetime.strptime(v.split('=',1)[1].strip(), "%b %d %H:%M:%S %Y %Z") - datetime.now()
 
@@ -61,35 +61,30 @@ class OpenSSL(SysTool):
         with tempfile.TemporaryDirectory() as tmp_dir:
             cnf_file = Path(tmp_dir)/'req.cnf'
             csr_file = Path(tmp_dir)/'cob.csr'
-            with open(cnf_file,'w') as f:
+            with open(cnf_file, 'w', encoding='utf8') as f:
                 for name, kw in cnf.items():
                     f.write(f'[ {name} ]\n')
                     for k,v in kw.items():
                         f.write(f'{k} = {v}\n')
                     f.write('\n')
-            with open(cnf_file) as f:
-                print(f.read())
+            print(cnf_file.read_text(encoding='utf8'))
             cmd = ('-newkey', 'rsa:2048', '-keyout', f'{prefix}-key.pem', '-config', cnf_file)
             if not askpass: cmd = (*cmd, '-nodes' if self.is_libre else '-noenc')
             if ca:
                 # Two-step process for old LibreSSL
-                self.req('-new', *cmd, '-out', csr_file)
-                self.x509('-req', '-in', csr_file, '-CA', f'{ca}.pem', '-CAkey', f'{ca}-key.pem', '-days', days, '-CAcreateserial', '-extfile', cnf_file, '-extensions', 'v3_req', '-sha256', '-out', f'{prefix}.pem')
+                self.req('-new', *cmd, '-out', csr_file).call()
+                self.x509('-req', '-in', csr_file, '-CA', f'{ca}.pem', '-CAkey', f'{ca}-key.pem', '-days', days, '-CAcreateserial', '-extfile', cnf_file, '-extensions', 'v3_req', '-sha256', '-out', f'{prefix}.pem').call()
             else:
-                self.req('-x509', *cmd, '-days', days, '-out', f'{prefix}.pem')
+                self.req('-x509', *cmd, '-days', days, '-out', f'{prefix}.pem').call()
         return self.inspect(prefix)
 
 
-    def rsa(self, *, path=None):
-        return self.genrsa(*(['-traditional']*(not self.is_libre)), *(['-out', path]*bool(path)), msg=None, if_0="utf8,null,")
-
-
     def rand_hex(self, *, path=None, nbytes=32):
-        return self.rand('-hex', *(['-out', path]*bool(path)), str(nbytes), msg=None, if_0="utf8,,").strip()
+        return self.rand('-hex', *(['-out', path]*bool(path)), str(nbytes)).call('utf8').strip()
 
 
     def sha256(self, fname):
-        return (self.dgst('-sha256', '-hex', '-r', fname, msg=None, if_0='utf8,,', if_1='null,null,') or '').split(' ',1)[0]
+        return (self.dgst('-sha256', '-hex', '-r', fname).on(0,'utf8').on(1,'null,null').call() or '').split(' ',1)[0]
 
 
     def ensure_server_cert(self, prefix, cn='webserver'):
@@ -100,8 +95,7 @@ class OpenSSL(SysTool):
             print("Creating system-wide CA certificate")
             self.cert(prefix=ca, askpass=False, days=OpenSSL.days.v*4, ca=None, cn='localhost-ca', force=True)
             if sys.platform == "darwin":
-                from .run import run
-                run(['sudo','security', 'add-trusted-cert', '-d', '-r', 'trustRoot', '-k', '/Library/Keychains/System.keychain', f'{ca}.pem'], msg="Enter your password to add the newly created CA certificate to the system's trusted roots")
+                Cmd('sudo','security', 'add-trusted-cert', '-d', '-r', 'trustRoot', '-k', '/Library/Keychains/System.keychain', f'{ca}.pem').say("Enter your password to add the newly created CA certificate to the system's trusted roots").call()
             else:
                 print(f"Manually add this certificate to the set of trusted ca certificates: {ca}.pem") 
         self.cert(prefix=prefix, askpass=False, days=OpenSSL.days.v, cn=cn, ca=ca, san=['localhost','127.0.0.1','dev.localhost','*.dev.localhost',hostname, f'*.{hostname}'])

@@ -58,7 +58,7 @@ class Exe(File):
 
     @classmethod
     def build(self, out, src=None, cc=None, cc_args=None):
-        build = Dir('local/build')
+        build = Dir('local/build') # FIXME: move to work_dir / ConfigVar('build ..')
         Exe(Path(out).resolve())
         from libclipy.tools.cc import CC
         cc = SysToolRsc(cc or CC, *(cc_args or tuple()))

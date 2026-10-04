@@ -1,6 +1,6 @@
 import shutil, json, hashlib
 from pathlib import Path
-from config import env
+from config import work_root
 from collections import namedtuple
 from libclipy.tools.git import Git
 from cli import UsageError
@@ -21,11 +21,9 @@ class Project():
     def __eq__(self, other):
         return str(self) == str(other)
 
-
     @classmethod
     def all(self):
         yield from Projects().all.values()
-
 
     @classmethod
     def lookup(self, name):
@@ -37,15 +35,15 @@ class Project():
         ''' Read the info metadata from the top comment of cli.py
         '''
         if not hasattr(self, '_info'):
-            with open(self.file(Project.info_file)) as f:
+            with open(self.file(Project.info_file), 'r', encoding='utf8') as f:
                 self._info = json.load(f)
         return self._info
     
 
     def set_info(self, **kwargs):
         self.info.update(kwargs)
-        with open(self.file(Project.info_file),'w') as f:
-            json.dump(self._info, f)
+        with open(self.file(Project.info_file), 'w', encoding='utf8') as f:
+            json.dump(self._info, f, ensure_ascii=False, indent=2)
 
     
     def copy_to(self, path, proj):
@@ -63,7 +61,7 @@ class Project():
         clipy = Project()
         if feature == 'core':
             yield from ['cli.py', 'libclipy/__init__.py', ]
-            yield from [f"libclipy/tools/{f}" for f in ['__init__.py', 'sys_tool.py', 'run.py', 'git.py']]
+            yield from [f"libclipy/tools/{f}" for f in ['__init__.py', 'sys_tool.py', 'git.py']]
             def _exclude(f):
                 if f.name.startswith('_test'): return True
                 if f.name == 'info.json': return True
@@ -81,8 +79,8 @@ class Project():
                 if f.name == 'cc.py' and 'cc' not in all_features: return True
             yield from [f for f in clipy.git.ls('libclipy/core/dep') if not _exclude(f)]
         elif feature == 'docs':
-            yield from [f for f in clipy.git.ls('libclipy/docs') if not f.name.startswith('_test')]
-            yield from [f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py']]
+            yield from [f"docs/{f}" for f in ['_static/.gitkeep','_static/favicon.png','issues.rst.tmpl','conf.py','ext/markdown_mermaid.py']]
+            yield f'libclipy/cli_docs.py'
         elif feature.startswith('lib.'):
             yield f'libclipy/{feature[4:]}.py'
         elif feature.startswith('cli.'):
@@ -91,7 +89,7 @@ class Project():
             raise ValueError(f"Unknown Feature: {feature}")
         else:
             yield f'libclipy/tools/{feature}.py'
-
+            
 
     def files(self, *features):
         ''' Returns a list of file Paths matching the features this project subscribes to
@@ -114,10 +112,10 @@ class Project():
         clipy = Project()
         files = set(map(str, clipy.files(*self.info['features'])))
         dfs = {}
-        # Deprecated files
+    # Deprecated files
         for f in set(self.info['hashes'].keys()) - files:
             dfs[f] = DFile(f, 'd', None, None, None)
-        # Expected files
+    # Expected files
         for f in files:
             hs = clipy.hash(f), self.hash(f)
             proj_hash_cached = self.sync_hashes.get(f)
@@ -137,7 +135,7 @@ class Project():
 
     def description(self):
         desc = []
-        with open(self.file('README.rst')) as f:
+        with open(self.file('README.rst'), 'r', encoding='utf8') as f:
             while (line:=f.readline()).strip(): pass
             while (line:=f.readline()).strip(): desc.append(line)
         return ''.join(desc)
@@ -164,7 +162,7 @@ class Projects():
     def all(self):
         if not hasattr(self, '_all'):
             try:
-                with open(env.work/'projects.json','rb') as f:
+                with work_root.open('projects.json', 'rb') as f:
                     self._all = {p:Project(p, sync_hashes=s) for p,s in json.load(f).items()}
             except Exception:
                 self._all = {}
@@ -189,6 +187,6 @@ class Projects():
 
 
     def save(self):
-        with open(env.work/'projects.json', 'w') as f:
-            json.dump({str(p):p.sync_hashes for p in self._all.values()}, f)
+        with work_root.open('projects.json', 'w', encoding='utf8') as f:
+            json.dump({str(p):p.sync_hashes for p in self._all.values()}, f, ensure_ascii=False, indent=2)
     

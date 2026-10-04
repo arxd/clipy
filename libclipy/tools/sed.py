@@ -10,5 +10,5 @@ class Sed(SysTool):
 
     def sub(self, path, *patterns):
         patterns = [item for p in patterns for item in ('-e', p)]
-        out = self(*patterns, path, msg=False, if_0="utf8,,")
-        with open(path,'w') as f: f.write(out)
+        out = self(*patterns, path).call('utf8')
+        with open(path, 'w', encoding='utf8') as f: f.write(out)

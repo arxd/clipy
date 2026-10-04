@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 from pathlib import Path
-from cli import UsageError, ConfigVar
+from cli import UsageError, ConfigVar, Cmd
 from .sys_tool import SysTool
 
 
@@ -26,35 +26,35 @@ class Git(SysTool):
     @property
     def name(self):
         if not hasattr(self, '_name'):
-            l = (self.config('--get', 'remote.origin.url', if_0='utf8,null,', msg=None, or_else=',null,') or '').strip()
-            if not l: l = self.rev_parse('--show-toplevel', if_0='utf8,,', msg=None).strip()
+            l = self.config('--get', 'remote.origin.url').on(0,'utf8').call(',,value','').strip()
+            if not l: l = self.rev_parse('--show-toplevel').call('utf8').strip()
             self._name = os.path.splitext(os.path.basename(l))[0]
         return self._name
 
 
     def status(self, changes_only=False):
-        changes = [x for x in self('status', '-z', if_0='utf8,,', msg=None).split('\0') if x]
+        changes = [x for x in self('status', '-z').call('utf8').split('\0') if x]
         changes = [(k[:2],k[3:]) for k in changes]
         if changes or changes_only: return changes
-        if self.fetch('--dry-run', if_0='utf8,,', msg=None).strip():
+        if self.fetch('--dry-run').call('utf8').strip():
             return [('  ','Need to pull')]
-        if self('status', '-sb', if_0='utf8,,', msg=None).splitlines()[0].split('[')[-1].startswith('ahead'):
+        if self('status', '-sb').call('utf8').splitlines()[0].split('[')[-1].startswith('ahead'):
             return [('  ','Need to push')] 
         return []
 
 
     def head_sym(self, short=False):
         args = (['--short'] if short else []) + ['HEAD']
-        return (self.symbolic_ref(*args, msg=None, if_0='utf8,null,', or_else=',null,') or '').strip()
+        return self.symbolic_ref(*args).on(0,'utf8').call(',,value','').strip()
 
 
     def head_commit(self):
-        return self.rev_parse('HEAD', if_0='utf8,,', msg=None).strip()
+        return self.rev_parse('HEAD').call('utf8').strip()
 
 
     def log(self, commit_hash):
         pretty = f'%H{SEP}%h{SEP}%P{SEP}%an{SEP}%at{SEP}%b{SEP}%s{SEP}%D{EOL}'
-        s = self('log', commit_hash, f"--pretty=format:{pretty}", if_0='utf8,,', msg=None)
+        s = self('log', commit_hash, f"--pretty=format:{pretty}").call('utf8')
         for line in s.split(EOL):
             line = line.lstrip()
             if not line: continue
@@ -73,7 +73,7 @@ class Git(SysTool):
 
     def refs(self):
         format = f'%(refname){SEP}%(refname:short){SEP}%(objecttype){SEP}%(objectsize){SEP}%(objectname){EOL}'
-        data = self.for_each_ref(f'--format={format}', msg=None, if_0='utf8,,')
+        data = self.for_each_ref(f'--format={format}').call('utf8')
         refid = 0
         for line in data.split(EOL):
             if not line.lstrip(): continue
@@ -93,11 +93,11 @@ class Git(SysTool):
 
 
     def ls(self, *pattern, invert=False):
-        return [Path(f) for f in self.ls_files(*(list(pattern) + (['--other'] if invert else [])), msg=None, if_0='utf8,,').splitlines()]
+        return [Path(f) for f in self.ls_files(*pattern, *['--other']*invert).call('utf8').splitlines()]
 
 
     def grep(self, pattern, *args):
-        stdout = self('--no-pager', 'grep', '-n', '-z', '--untracked', *args, pattern, msg=None, if_0='bin,,', if_1='null,,')
+        stdout = self('--no-pager', 'grep', '-n', '-z', '--untracked', *args, pattern).on(0,'bin').call(',,value')
         if stdout is None: return
         for line in stdout.split(b'\n')[:-1]:
             parts = line.split(b'\x00')
@@ -106,7 +106,7 @@ class Git(SysTool):
 
 
     def pull_rebase(self, *args, **kwargs):
-        self.pull('--rebase', *args, **kwargs)
+        return self.pull('--rebase', *args, **kwargs)
 
 
     def is_worktree_dirty(self):
@@ -119,16 +119,15 @@ class Git(SysTool):
         if not cur: raise UsageError(f"Head is detached")
         if self.is_worktree_dirty():
             raise UsageError(f'Git worktree is not clean.  Commit changes and try again.')
-        self.checkout('--orphan', name)
-        self.rm('-rf', '.')
-        with open(f'.gitignore', 'w') as f:
-            f.write('\n'.join(gitignore))
+        self.checkout('--orphan', name).say().call()
+        self.rm('-rf', '.').say().call()
+        Path('.gitignore').write_text('\n'.join(gitignore))
         self.add('.gitignore')
-        self.commit('-m', f'{name} orphan branch')
+        self.commit('-m', f'{name} orphan branch').say().call()
         #self.push('-u', remote, name)
-        self.checkout(cur)
+        self.checkout(cur).say().call()
         return f'{remote}/{name}'
 
     
-    def prepare_call(self, *cmd, **kwargs):
-        return (self.cmd.v, '-C', str(self.repo), *cmd), kwargs
+    def __call__(self, *args, **kwargs):
+        return Cmd(self.cmd.v, '-C', self.repo, *args, **kwargs)

@@ -4,6 +4,8 @@ cli.py
 
 This is an inline-library of useful tooling solutions to give any project a nice CLI.
 
+*FIXME*: support win32
+
 This project serves two primary purposes.
 
 1. A universal command line interface for any project. (See: :ref:`Commands <page-commands>`)

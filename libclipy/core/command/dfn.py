@@ -1,6 +1,6 @@
 import inspect, importlib
 from .param import Param, Bool
-from .errors import DuplicateArgumentAlias, InvalidCommandName, UnknownSubCommand, AmbiguousSubCommand
+from ..errors import DuplicateArgumentAlias, InvalidCommandName, UnknownSubCommand, AmbiguousSubCommand
 
 HELP = Param.from_kw('help', Bool)
 
@@ -61,29 +61,44 @@ class CommandDfn(type):
         return self.__func__(*args, **kwargs)
     
 
-    def get_venv(self):
-        from config import env
-        from cli import Venv
-        for venv in self.venv:
-            if not venv.system or env.system in venv.system:
-                return venv
-        return Venv()
+    def get_venv(self, system=None):
+        if system is None:
+            from ..config import system as s
+            system = {s.v}
+        for v in self.venv:
+            if v.for_system(system): return v
+        import sys
+        try: return getattr(sys.modules[self.module.rsplit('.',1)[0]], '__venv__')
+        except AttributeError: pass
+        from cli import main
+        return main.get_venv(system)
+
+
+    @property
+    def bin_path(self):
+        return self.get_venv().venv_path('bin')
 
 
     def sub_commands(self, prefix=''):
         ''' Get a list of Command objects matching the `prefix`
         '''
+    # Load a module
+        def _module(src):
+            return importlib.import_module(src, package=self.module.rsplit('.',2)[0])
     # yield a list of `Command` found by scanning dir(src)
         def _dir(src):
             for k in dir(src):
-                if isinstance(cmd:=getattr(src,k), CommandDfn) and cmd.name.startswith(prefix): yield cmd
+                if isinstance(cmd:=getattr(src,k), CommandDfn) and cmd.name.startswith(prefix) and cmd is not self: yield cmd
+    # yield a single Command `name` inside of the module loaded from `src`
+        def _command_str(src, name):
+            if name.startswith(prefix): yield getattr(_module(src), name)
     # yield a list of `Command` objects inside the module loaded from `src`
         def _package_str(src):
-            yield from _dir(importlib.import_module(src, package=self.module.rsplit('.',2)[0])) 
+            yield from _dir(_module(src)) 
     # yield a list of matching `Command` objects from any source
         def _any(src):
             if isinstance(src, str):
-                yield from _package_str(src)
+                yield from _command_str(*src.split('::')) if '::' in src else _package_str(src)
             elif isinstance(src, CommandDfn):
                 if src.name.startswith(prefix): yield src
             elif callable(src):
@@ -91,7 +106,7 @@ class CommandDfn(type):
     # Yield from a heterogeneous mixture of package-strings, Command objects, callables, and other dir()-able objects
         def _heterogeneous(*srcs):
             for src in srcs: yield from _any(src)
-    # Use sub_sources given to @CLI()
+    # Use sub_sources given to @Command()
         return set(_heterogeneous(*self.sub_sources))
     
     

@@ -1,3 +1,28 @@
+# python is executed with -I, so we need to manually add the project root to the path
+import sys, os, signal, time, logging
+sys.path.insert(0, sys.argv[3])
+os.chdir(sys.path[0])
+
+# Set logging class early so top-level getLogger() calls during imports use our logger
+from libclipy.core.logger import ClipyLogger, ClipyLogFilter
+logging.setLoggerClass(ClipyLogger)
+
+# Handle ctl-c SIGINT
+task = None
+loop = None
+def handle_signal(signal, _):
+    global task
+    if isinstance(task, float):
+        dt = time.time() - task
+        if dt > 2: os._exit(128+signal)
+    else:
+        cancel, task = task and task.cancel, time.time()
+        if cancel:
+            loop.call_soon_threadsafe(cancel)
+        else:
+            raise KeyboardInterrupt()
+signal.signal(signal.SIGINT, handle_signal)
+
 
 # Output the value in pickle format (this way can encode the most variety of outputs)
 # For sub-commands sending through a pipe to the parent, this is the only output available and binary is set to True.
@@ -11,7 +36,7 @@ def output_pickle(v, stream):
         v.__cause__ = None
     b = pickle.dumps(v, protocol=5)
     try:
-        stream.write(FRAME.pack(len(b)))
+        stream.write(PICKLE_HDR.pack(len(b)))
         stream.write(b)
         # `out` is a 128KB BufferedWriter, so without this nothing reaches our parent until we exit,
         # which would defeat the point of Command.each_async() yielding values as they arrive.
@@ -25,6 +50,7 @@ def _send_child_results(v):
     if not isinstance(v, dict): raise ValueError(f"Implicit generator '{cmd}' must yield None or a dict, not {v!r}")
     for x in cmd.sub.each(**v): output(x)
 
+# Handlers for every permutation of sync/async,  normal/generator, explicit/implicit
 def f_generator_async_implicit(v): return f_generator_async(v, cmd.sub and _send_child_results)
 def f_generator_async(v, out=None):
     async def _agen():
@@ -80,77 +106,49 @@ def run_coro(coro):
         loop.run_until_complete(loop.shutdown_default_executor())
         loop.close()
 
-# python is executed with -I, so we need to manually add the project root to the path
-import sys, os
-sys.path.insert(0, os.environ['_CLIPY_ROOT'])
-os.chdir(os.environ['_CLIPY_ROOT'])
 
-# Set logging class early so top-level getLogger() calls during imports uses our logger
-import logging, pickle, traceback, signal, time
-from libclipy.core.logger import ClipyLogger, ClipyLogFilter
-logging.setLoggerClass(ClipyLogger)
+import mmap, pickle, traceback
+from libclipy.core.config import initialize_config, out_fd, verbosity, format_out
 
-# These imports will use the ClipyLogger
-from cli import Exec, main
-from config import env
-from libclipy.core.command.command import FRAME, Command
+# Read our input from shared memory
+mm_size, mm_fd = map(int, sys.argv[1:3])
+mm = mmap.mmap(mm_fd, mm_size)
+_config_data, _cmd_info = pickle.loads(mm[:mm_size])
+mm.close()
+os.close(mm_fd)
 
-
-# Handle ctl-c SIGINT
-task = None
-loop = None
-def handle_signal(signal, _):
-    global task
-    if isinstance(task, float):
-        dt = time.time() - task
-        if dt > 2: os._exit(128+signal)
-    else:
-        cancel, task = task and task.cancel, time.time()
-        if cancel:
-            loop.call_soon_threadsafe(cancel)
-        else:
-            raise KeyboardInterrupt()
-signal.signal(signal.SIGINT, handle_signal)
-
-
-# Our parent will send our cmd, args, kwargs through a pipe
-if sys.argv[1]:
-    with open(int(sys.argv[1]), 'rb', closefd=True) as x:
-        data = pickle.load(x)
-else: # We don't have a parent command
-    # ensure the work dir exists because commands expect it to exist.
-    env.work.mkdir(parents=True, exist_ok=True)
-    data = {}
-
-# Initialize the configuration environment
-from libclipy.core.config import initialize_config
-initialize_config(data.get('env'))
-
-# Logging filter
-logging.getLogger().setLevel((11 if env.verbosity > 0 else 20)-env.verbosity)
+# Use the _config_data to initilize our ConfigVar values
+initialize_config(_config_data)
+# With the configured verbosity we can now finish setting up logging
+logging.getLogger().setLevel((11 if verbosity.v > 0 else 20)-verbosity.v)
 ClipyLogFilter.filter_logs().stderr('{lvl} {message}{names} {rloc} {obj}')
 
-# If we are a child-command then the command's results are returned to the parent through a pipe _CLIPY_FD.
-ret_fd = os.environ.get('_CLIPY_FD')
-ret_stream = ret_fd and open(int(ret_fd), 'wb', closefd=False) # Don't closefd because we might Exec and the new process will need 
-# Create an output function that will send results to the correct place.
-if ret_stream: # A child command always returns pickled results through the pipe (ret_fd)
-    output = lambda v: output_pickle(v, ret_stream)
+# Logs from these will be subject to the configured logging preferences
+from libclipy.core.command.command import Command
+from libclipy.core.command.cmd import Exec
+from libclipy.core.command.channels import PICKLE_HDR
+
+# Where is our output going?
+if out_stream:=out_fd.v and open(out_fd.v, 'wb', closefd=False): # Don't closefd because we might pass it along if we Exec
+    # A child command always returns pickled results through the pipe (out_fd)
+    output = lambda v: output_pickle(v, out_stream)
 else: # The root command's results go to stdout/stderr, but how should we format the result?
     from libclipy.core.pretty import print
-    if env.format == 'pickle': # Pickle base64 results
+    if format_out.v == 'pickle': # Pickle base64 results
         import base64
         output = lambda v: sys.stdout.write(base64.b64encode(pickle.dumps(v, protocol=5)).decode('ascii'))
-    elif env.format == 'json': # Json
+    elif format_out.v == 'json': # Json
         import json
         output = lambda v: sys.stdout.write(json.dumps(v))
     else: # pretty
         output = lambda v: v is not None and print.pretty(v)
 
 try:
-# If we are a child command then our cmd, args, kwargs will be given to us through the data pipe
-    cmd = data.get('cmd', main().bind_cli(*sys.argv[2:]))
-    args, kwargs = data.get('args',tuple()), data.get('kwargs',{})
+    if 'cmd' in _cmd_info:
+        cmd, args, kwargs = _cmd_info['cmd']
+    else:
+        from cli import main
+        cmd, args, kwargs = main().bind_cli(*_cmd_info['argv']), tuple(), {}
 # Set the _sub_cmd for implicit commands.  FIXME: should this be done in cmd.args_kwargs?
     if not cmd.is_implicit: kwargs['_sub_cmd'] = cmd.sub
 # cmd_v may be a coro, generator, or the single value to output depending on the function's type.
@@ -161,7 +159,7 @@ try:
 # The result may be a value to return, or an Exec to replace the current process
     if not isinstance(result, Exec):
         if result is not Command.no_return: output(result)
-        if ret_stream: os.close(int(ret_fd)) # We handled the output() (didn't exec) so close the fd
+        if out_stream: os.close(out_fd.v) # We handled the output() (didn't exec) so close the fd
 
 except BaseException as e:
     output(e)
@@ -169,8 +167,8 @@ except BaseException as e:
 
 finally:
     try:
-        if ret_stream: ret_stream.close()
-    except (OSError, BrokenPipeError):
+        if out_stream: out_stream.close()
+    except (OSError, BrokenPipeError): # FIXME: Is this needed?
         pass
 
 if isinstance(result, Exec):
@@ -179,4 +177,4 @@ if isinstance(result, Exec):
     # So we explicitly let all those run before doing the exec()
     import atexit
     atexit._run_exitfuncs()
-    result() # FIXME: Who needs to close ret_fd?  Is the exec'ed code going to output to the parent?
+    result()

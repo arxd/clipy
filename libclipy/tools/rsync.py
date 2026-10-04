@@ -69,7 +69,7 @@ class Rsync(SysTool):
                 have.add(d)
                 f.write(f'+ {d}\n')
         # Build the filter file
-            with open(tmp.name, 'w') as f:
+            with open(tmp.name, 'w', encoding='utf8') as f:
                 for s in src:
                     if isinstance(s, str) and s.startswith('!'):
                         f.write(f'P {s[1:]}\n')
@@ -78,7 +78,7 @@ class Rsync(SysTool):
                         f.write(f'+ {s}\n')
                 f.write('- *\n')
         # Run the sync
-            self(*self.args, *cmd, '--filter', f'. {tmp.name}', chdir + ('' if chdir.endswith('/') else '/'), f":{dest}", **kwargs)
+            self(*self.args, *cmd, '--filter', f'. {tmp.name}', chdir + ('' if chdir.endswith('/') else '/'), f":{dest}", **kwargs).call()
 
 
     def copy(self, *args, **kwargs):

@@ -3,6 +3,12 @@ import pytest
 from .config import ConfigVar, UNSET
 
 
+@pytest.fixture(autouse=True, scope="function")
+def cleanup_vars():
+    yield
+    ConfigVar._set = set()
+    
+
 def test_configvar_constructor_1():
     ''' You can create a variable with only the constructor and a name '''
     foo = ConfigVar('foo')

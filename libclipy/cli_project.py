@@ -1,8 +1,7 @@
-from cli import Command, run
+from cli import Command, version, Cmd
 from libclipy.core.pretty import CLR, print as pprint
 from .project import Project
 from libclipy.tools.diff import Diff
-from config import version
 
 
 @Command()
@@ -15,7 +14,6 @@ def new_(project_path, feature__f=[]):
         --feature -f <feature_name>*
             We need this clipy feature
     '''
-    from config import version
     from libclipy.tools.sed import Sed
     clipy = Project()
     proj = Project(project_path)
@@ -37,9 +35,9 @@ def new_(project_path, feature__f=[]):
     proj._info = {'version':version, 'features':features}
     proj.set_info(hashes={str(f):clipy.hash(f) for f in files})
 # Init git
-    proj.git('init', '-b', 'main')
-    proj.git('add', '.')
-    proj.git('commit', '-m', 'Boilerplate clipy code')
+    proj.git('init', '-b', 'main').call()
+    proj.git('add', '.').call()
+    proj.git('commit', '-m', 'Boilerplate clipy code').call()
 # Add it to Projects
     Project.lookup(str(proj))
 
@@ -52,7 +50,7 @@ def diff(project_name='', verbose__v=False):
     Parameters:
         <project>
             The path to the project to compare against.
-            If you give just the project name then the local/projects.json file will be searched to find the path.
+            If you give just the project name then the projects.json file will be searched to find the path.
     '''
     diff = Diff()
     clipy = Project()
@@ -155,7 +153,7 @@ def sync(project_name='', *, force__f=False, reverse__r=False):
         if (p:=input("[e]dit / [c]opy / keep: ")) == 'c':
             clipy.copy_to(f, proj)
         elif p == 'e':
-            run(['vimdiff', proj.file(f), clipy.file(f)])
+            Cmd('vimdiff', proj.file(f), clipy.file(f)).call()
     # Update the hashes
     proj.set_info(version=version, hashes={f:d.ref_hash for f,d in diffed.items() if d.status != 'd'})
     proj.set_sync_hashes({f:proj.hash(f) for f,d in diffed.items() if d.status != 'd'})

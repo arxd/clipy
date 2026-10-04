@@ -136,5 +136,5 @@ class Diff(SysTool):
         a, b = Path(a), Path(b)
         if missing:=tuple(f for f in (a,b) if not f.is_file()):
             return FileDiff(a, b, path=path, missing=missing)
-        out = self(a, b, msg=None, if_0='null,null,', if_1='utf8,null,', or_else='null,,raise diff failed')
+        out = self(a, b).on(0,'null,null').on(1,'utf8,null').call()
         return FileDiff.parse(a, b, out, path=path)

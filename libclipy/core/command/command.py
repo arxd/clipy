@@ -1,14 +1,9 @@
-import inspect, importlib, os, subprocess, pickle, signal, atexit, struct, sys
-from collections import namedtuple
+import inspect, importlib, signal
 from .dfn import CommandDfn, HELP
 from .param import Param, Bool, Str
-from .errors import UnknownKey, NotBool, MissingArgument, ExtraArguments, UnknownSubCommand, AmbiguousSubCommand, HelpWanted, SubRequired
-from libclipy.tools.run import Exec
+from ..errors import UnknownKey, NotBool, MissingArgument, ExtraArguments, UnknownSubCommand, AmbiguousSubCommand, HelpWanted, SubRequired
+from .cmd import Cmd
 
-# Every value a child sends back on its _CLIPY_FD pipe is prefixed with its length.
-# A pickle is self-delimiting, so the sync reader in each() doesn't strictly need this,
-# but an async reader only ever sees bytes and has no way to know where a record ends.
-FRAME = struct.Struct('!I')
 
 class Command():
     ''' This represents a possible entry point of the project.
@@ -44,7 +39,7 @@ class Command():
             *args: You may specify zero or more sources of sub-commands of the following type:
                 
                 * module : A module object (from an import statement) may be given directly.  Any top-level `CommandDfn` objects will be used as sub-commands.
-                * string : A relative or absolute module path.  This module will be loaded when the sub-commands need to be queried (such as when a sub-command is called, or a list of sub-commands is needed for documentation).
+                * string : A relative or absolute module path.  This module will be loaded when the sub-commands need to be queried (such as when a sub-command is called, or a list of sub-commands is needed for documentation).  If the path uses the `path::cmd` syntax then only that command will be imported from the module.
                 * CommandDfn : A single command can be given directly.
                 * callable : When sub-commands are queried this is called with the prefix and CommandDfn to programmatically return one or more of the above sources of sub-commands.
             sub_required (bool, optional): Does this command require a sub command? 
@@ -55,7 +50,7 @@ class Command():
             return CommandDfn(fn.__name__, (Command,), dict(
                 __func__ = fn,
                 __doc__ = fn.__doc__,
-                module = f'{fn.__module__}.{fn.__name__}',
+                module = f'{fn.__module__}.{fn.__name__}', # FIXME:  :: separation
                 sub_sources = args,
                 sub_required = args and sub_required,
                 is_async = async_gen or inspect.iscoroutinefunction(fn),
@@ -80,17 +75,28 @@ class Command():
         args += [f"{str(self.alias.get(k,k))}={v!r}" for k,v in self.kwargs.items()]
         s = f"{self.name}({', '.join(args)})"
         return s if self.sub is None else f"{s} -> {self.sub!r}"
-
-
+    
+    
     def __call__(self, *args, **kwargs):
+        return self.call(*args, **kwargs)
+    
+
+    def exec(self, *args, **kwargs):
+        ''' Replace the current process with this command running in its venv.
+        '''
+        cmd, _ = Cmd.entry_point(type(self).bin_path/'python', cmd=(self, args, kwargs))
+        return cmd.exec()
+
+
+    def call(self, *args, **kwargs):
         ''' Call the command synchronously
         '''
         r = list(self.each(*args, **kwargs))
         if len(r) == 0: return Command.no_return
         return r[0] if len(r) == 1 else tuple(r)
-    
 
-    async def wait(self, *args, **kwargs):
+    
+    async def call_async(self, *args, **kwargs):
         ''' Call the command asynchronously
         '''
         r = [x async for x in self.each_async(*args, **kwargs)]
@@ -99,158 +105,25 @@ class Command():
 
 
     def each(self, *args, **kwargs):
-        ''' A generator that yields each output of the command.
-        1) Open the subprocess
-        2) send cmd,args,kwargs via data pipe
-        3) Listen to out pipe for results from the child
-        4a) The subprocess completed and closed their out pipe
-            5) Wait for the process to close
-            6) Do a useless, redundant _cleanup call
-        4b) Our caller exited the program without reading all of the pipe's values (break)
-            5) atexit calls _cleanup and it sends SIGINT to the child
-            6) The child exits gracefully with KeyboardInturrupt
-        4c) We get a ctl-c SIGINT which raises KeyboardInturrupt 
-            5) We get knocked out of the pipe-reading loop and into the finally
-            6) _cleanup sends a second SIGINT (the original ctl-c also went to the child) but it is ignored because it came so fast
-        '''
-        venv = type(self).get_venv()
-        data_fd = os.pipe() # The data we are sending the child
-        out_fd = os.pipe() # The data coming back to us from our child
-        # FIXME might deadlock if the pipe buffer fills up because the child isn't reading it (it hasn't been started)
-        os.write(data_fd[1], pickle.dumps({'args':args, 'kwargs':kwargs, 'cmd':self}, protocol=5))
-        os.close(data_fd[1])
-        env = os.environ.copy()
-        env['_CLIPY_FD'] = str(out_fd[1])
-        try:
-            proc = subprocess.Popen([venv.venv_path('bin/python'), '-I','libclipy/core/entry_point.py', str(data_fd[0])], pass_fds=(data_fd[0], out_fd[1]) if sys.platform != "win32" else None, env=env)
-        except BaseException:
-            os.close(out_fd[0]) # Nothing is going to read it, and no-one else will close it for us
-            raise
-        finally:
-            # The child has its own copies of these now (or never started at all), so drop ours.
-            os.close(data_fd[0])
-            os.close(out_fd[1])
-        # We need to register _cleanup atexit instead of relying on the finally of try.
-        # The reason is that we are a generator and if our caller breaks out early our finally never gets called
-        def _cleanup():
-            proc.send_signal(signal.SIGINT)
-            proc.wait()
-        atexit.register(_cleanup)
-        try:
-            with open(out_fd[0], 'rb', closefd=True) as pipe_in:
-                while True:
-                    header = pipe_in.read(FRAME.size)
-                    if not header: break # A clean EOF: the child closed the pipe
-                    if len(header) < FRAME.size: raise ValueError(f"Truncated frame header from subprocess: {header!r}")
-                    item = pickle.loads(pipe_in.read(*FRAME.unpack(header)))
-                    if isinstance(item, Exception): raise item
-                    yield item
-            proc.wait()
-            if proc.returncode != 0: raise ValueError(f"Subprocess had a non-zero exit: {proc.returncode}")
-        finally:
-            atexit.unregister(_cleanup)
-            _cleanup()
-
+        cmd, each_args = Cmd.entry_point(type(self).bin_path/'python', pipe=True, cmd=(self, args, kwargs))
+        for item in cmd.each(**each_args, kill=signal.SIGINT):
+            if isinstance(item, BaseException): raise item
+            yield item
+        
 
     async def each_async(self, *args, **kwargs):
-        ''' An async generator that yields each output of the command as they arrive. (written by Claude)
-        '''
         import asyncio
-        if sys.platform == "win32": raise NotImplementedError("each_async() needs POSIX fd passing")
         loop = asyncio.get_running_loop()
-
-        class _Proc(asyncio.SubprocessProtocol):
-            ''' The child inherits our stdio, so process exit is the only event we care about.
-            The results come back over a separate pipe which a SubprocessTransport can't carry.
-            '''
-            def __init__(self): self.exited = asyncio.Event()
-            def process_exited(self): self.exited.set()
-
-    # venv_path() may shell out to uv to build a venv, which would block the loop
-        venv = type(self).get_venv()
-        python = await loop.run_in_executor(None, venv.venv_path, 'bin/python')
-        data_fd = os.pipe() # The data we are sending the child
-        out_fd = os.pipe() # The data coming back to us from our child
-        # FIXME might deadlock if the pipe buffer fills up because the child isn't reading it (it hasn't been started)
-        os.write(data_fd[1], pickle.dumps({'args':args, 'kwargs':kwargs, 'cmd':self}, protocol=5))
-        os.close(data_fd[1])
-        env = os.environ.copy()
-        env['_CLIPY_FD'] = str(out_fd[1])
+        # This might take a long time if it needs to create a new virtual environment
+        venv_path = await loop.run_in_executor(None, type(self).get_venv().venv_path, 'bin/python')
+        cmd, each_args = Cmd.entry_point(venv_path, pipe=True, cmd=(self, args, kwargs))
         try:
-            transport, proc_proto = await loop.subprocess_exec(_Proc,
-                python, '-I', 'libclipy/core/entry_point.py', str(data_fd[0]),
-                stdin=None, stdout=None, stderr=None, # Inherited, so the child's own output reaches the terminal
-                pass_fds=(data_fd[0], out_fd[1]), env=env)
-        except BaseException:
-            os.close(out_fd[0]) # Nothing is going to read it, and no-one else will close it for us
-            raise
-        finally:
-            # The child has its own copies of these now (or never started at all), so drop ours.
-            # out_fd[0] is the exception: it stays open for the reader below to close.
-            os.close(data_fd[0])
-            os.close(out_fd[1])
-    # Same reasoning as each(): we are a generator, so our finally is not guaranteed to run.
-    # It is worse here though.  An async generator's finally contains awaits, so it can only run
-    # while a loop is alive (see run_coro's shutdown_asyncgens) -- unlike a sync generator it can
-    # never be rescued by the garbage collector.  So atexit stays the last line of defence, and it
-    # has to work with no loop at all: hence the raw Popen, whose signalling and wait are blocking.
-        proc = transport.get_extra_info('subprocess')
-        def _cleanup():
-            ''' The backstop runs with no event loop, so it waits with a blocking Popen.wait().
-            Same policy as the finally below: SIGINT, then wait for as long as the child needs.
-            '''
-            try:
-                proc.send_signal(signal.SIGINT)
-                proc.wait()
-            except (ProcessLookupError, ChildProcessError):
-                pass # Already gone, or asyncio's child watcher got there first
-        atexit.register(_cleanup)
-        reader = asyncio.StreamReader(loop=loop)
-        pipe_transport, _ = await loop.connect_read_pipe(lambda: asyncio.StreamReaderProtocol(reader, loop=loop), os.fdopen(out_fd[0], 'rb', 0))
-        try:
-            while True:
-                try:
-                    header = await reader.readexactly(FRAME.size)
-                except asyncio.IncompleteReadError as e:
-                    # Unlike each(), framing lets us tell a clean EOF from a half-written record
-                    if e.partial: raise ValueError(f"Truncated frame header from subprocess: {e.partial!r}") from None
-                    break # A clean EOF: the child closed the pipe
-                item = pickle.loads(await reader.readexactly(*FRAME.unpack(header)))
-                if isinstance(item, Exception): raise item
+            agen = cmd.each_async(**each_args, kill=signal.SIGINT)
+            async for item in agen:
+                if isinstance(item, BaseException): raise item
                 yield item
-            await proc_proto.exited.wait()
-            if (code := transport.get_returncode()) != 0: raise ValueError(f"Subprocess had a non-zero exit: {code}")
-        finally:
-            atexit.unregister(_cleanup)
-            pipe_transport.close()
-        # Ask the child to stop, then wait however long it takes.  SIGINT only: no SIGTERM/SIGKILL
-        # escalation and no timeout, so the child's own __exit__/finally blocks always get to run.
-            if transport.get_returncode() is None:
-                try:
-                    # Not proc.send_signal(), which calls Popen.poll() and can reap the child out
-                    # from under asyncio's watcher thread, leaving it to fail with ECHILD.
-                    os.kill(transport.get_pid(), signal.SIGINT)
-                except ProcessLookupError:
-                    pass # Already gone, just not reaped yet
-                try:
-                    await proc_proto.exited.wait()
-                except asyncio.CancelledError:
-                    # We are unwinding, but the child still gets to finish.  The cancellation has
-                    # been delivered by now, so this second wait suspends normally instead of
-                    # re-raising; a further cancel (a second ctl-C) does get through and gives up.
-                    await proc_proto.exited.wait()
-                    raise
-        # Only now that the child is gone is this safe: close() SIGKILLs a process still running.
-        # It also lets asyncio's watcher be the one to reap, so the Popen never ends up collected
-        # with returncode None -- which would park it in subprocess._active for the next Popen()
-        # to reap, stealing the pid from that thread.
-            transport.close()
-
-
-    def exec(self, *args, **kwargs):
-        ''' Replace the current process with this command running in its venv.
-        '''
-        return Exec(venv=type(self).get_venv(), data={'cmd':self, 'args':args, 'kwargs':kwargs})
+        except GeneratorExit:
+            await agen.aclose()
 
 
     def bind_cli(self, *args):

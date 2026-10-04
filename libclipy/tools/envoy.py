@@ -193,14 +193,14 @@ class Route(EObj):
         return EObj(match=match, route=route)
 
 
-class Envoy(SysTool):
 
+class Envoy(SysTool):
     sub_commands = []
     version_probe = r'^envoy\s+version.*?/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)/.*$'
     cmd = ConfigVar('envoy_path The path to the envoy executable', default='envoy')
     version = ConfigVar('envoy_version The desired version for envoy', default='1.30')
-    config = ConfigVar('envoy_config The location of the envoy config file', default='local/envoy/config.json')        
-                       
+    config = ConfigVar('envoy_config The location of the envoy config file (resolved relative to work_root', default='envoy/config.json')
+
     @classmethod
     def install_help_generic(self):
         return ['https://www.envoyproxy.io/docs/envoy/latest/start/install', '$ brew install envoy']
@@ -310,22 +310,27 @@ class Envoy(SysTool):
         self.cfg.static_resources.clusters[cluster_name].load_assignment.endpoints[0].lb_endpoints.append(endpoint)
 
 
+    @property
+    def config_path(self):
+        from config import work_root
+        return work_root.path(Envoy.config.v)
+    
+
     def save(self):
-        path = Path(Envoy.config.v)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w') as f:
+        from config import work_root
+        with work_root.open(Envoy.config.v, 'w', encoding='utf8') as f:
             cfg_obj = json.loads(repr(self.cfg))
-            if path.suffix == '.json':
+            if Envoy.config.v.suffix == '.json':
                 json.dump(cfg_obj, f, indent=4)
             else:
-                raise ValueError(f"Can't save config: {path}")
-
+                raise ValueError(f"Can't save config: {self.config_path}")
+        
 
     def check_config(self):
         self.save()
-        self('-c', Envoy.config.v, '--mode', 'validate')
+        self('-c', self.config_path, '--mode', 'validate').call()
 
 
     def run(self):
         self.save()
-        self('-c', Envoy.config.v)
+        return self('-c', self.config_path)
