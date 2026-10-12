@@ -33,7 +33,7 @@ def new_(project_path, feature__f=[]):
     entries = [f"'libclipy.{x.replace('.','_')}', "  for x in features if x.startswith('cli.') or x == 'docs']
     sed.sub(proj.file('cli.py'), f"s/@Command.*/@Command({''.join(entries)}sub_required=False)/")
     proj._info = {'version':version, 'features':features}
-    proj.set_info(hashes={str(f):clipy.hash(f) for f in files})
+    proj.set_info(hashes={str(f):clipy.hash(f) for f in files}, venvs={})
 # Init git
     proj.git('init', '-b', 'main').call()
     proj.git('add', '.').call()

@@ -8,7 +8,7 @@ from pathlib import Path
 class OpenSSL(SysTool):
 
     sub_commands = ['req', 'x509', 'genrsa', 'rand', 'dgst']
-    version_probe = (lambda s: (s.cmd.v, 'version')), r'^(Open|Libre)SSL (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
+    version_probe = lambda s: Cmd(s.cmd.v, 'version').on(0,'utf8'), r'^(Open|Libre)SSL (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
     cmd = ConfigVar('OpenSSL.cmd The path to the openssl executable', default='openssl')
     version = ConfigVar('OpenSSL.version The required version of openssl', default='3.3')
     ca = ConfigVar('OpenSSL.ca The default CA to use when creating a server certificate', default='~/.ssh/ca_localhost')
@@ -87,8 +87,7 @@ class OpenSSL(SysTool):
         return (self.dgst('-sha256', '-hex', '-r', fname).on(0,'utf8').on(1,'null,null').call() or '').split(' ',1)[0]
 
 
-    def ensure_server_cert(self, prefix, cn='webserver'):
-        hostname = socket.gethostname()
+    def ensure_server_cert(self, prefix, *, san, cn='webserver'):
         if (exp:=self.expires(prefix)) and exp.days > 2: return
         ca = Path(OpenSSL.ca.v).expanduser().resolve()
         if not (exp:=self.expires(ca)) or exp.days < OpenSSL.days.v:
@@ -98,4 +97,4 @@ class OpenSSL(SysTool):
                 Cmd('sudo','security', 'add-trusted-cert', '-d', '-r', 'trustRoot', '-k', '/Library/Keychains/System.keychain', f'{ca}.pem').say("Enter your password to add the newly created CA certificate to the system's trusted roots").call()
             else:
                 print(f"Manually add this certificate to the set of trusted ca certificates: {ca}.pem") 
-        self.cert(prefix=prefix, askpass=False, days=OpenSSL.days.v, cn=cn, ca=ca, san=['localhost','127.0.0.1','dev.localhost','*.dev.localhost',hostname, f'*.{hostname}'])
+        self.cert(prefix=prefix, askpass=False, days=OpenSSL.days.v, cn=cn, ca=ca, san=san)

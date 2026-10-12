@@ -2,8 +2,12 @@
 class PrettyException(Exception):
     ''' This is an Exception that has a pretty() method to render itself.
     '''
+    default_args = {}
+
     def __init__(self, **kwargs):
-        for k,v in kwargs.items(): setattr(self, k,v)
+        args = type(self).default_args.copy()
+        args.update(kwargs)
+        for k,v in args.items(): setattr(self, k,v)
 
     def __str__(self):
         return ('\n'.join(self.msg) if isinstance(self.msg, (list,tuple)) else self.msg) if hasattr(self, 'msg') else self.__class__.__name__
@@ -25,7 +29,7 @@ class UsageError(PrettyException):
     
     They should do what they are told in the error message and then try again.
     '''
-    def __init__(self, msg, **kwargs):
+    def __init__(self, msg=None, **kwargs):
         super().__init__(msg=msg, **kwargs)
 
 
@@ -35,11 +39,30 @@ class CmdError(PrettyException):
 
 
 
+class MissingTool(UsageError):
+    default_args = dict(tool=None, msg=None, shell_cmd=None, need=None, got=None, help=None)
+
+    def __pretty__(self, p):
+        from .pretty import CLR
+        p(self.msg)
+        if self.shell_cmd: p(f'   $ {self.shell_cmd}')
+        if self.need: p(f"{CLR.y}{self.tool.__name__}{CLR.x} requires version >= {CLR.m}{self.need}{CLR.x}")
+        if self.got: p(f'Version {CLR.r}{self.got}{CLR.x} was found.')
+        if self.help:
+            if self.help == True:
+                import platform
+                if hasattr(self.tool, 'install_help_generic'): p(*self.tool.install_help_generic())
+                pfm = 'install_help_' + platform.platform().lower().split('-')[0]
+                if hasattr(self.tool, pfm): p(*getattr(self.tool, pfm)())
+            elif self.help: p(self.help)
+
+
+
 class CommandError(PrettyException):
 
     def __pretty__(self, p):
         super().__pretty__(p)
-        p.ln(p.ERR, "Run with -h or --help for additional documentation for this command.")
+        p(p.ERR, "Run with -h or --help for additional documentation for this command.")
 
 
 
@@ -122,6 +145,7 @@ class HelpWanted(BindError):
         subs = sorted(list(type(self.cmd).sub_commands()))
         p.pretty({s.name:(s.__doc__ or '').split('\n')[0].strip() for s in subs})
         p.ln(inspect.cleandoc(self.cmd.__doc__ or '').split('\n'))
+
 
 
 class SubRequired(BindError):

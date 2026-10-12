@@ -79,28 +79,32 @@ class CommandDfn(type):
         return self.get_venv().venv_path('bin')
 
 
-    def sub_commands(self, prefix=''):
-        ''' Get a list of Command objects matching the `prefix`
+    def sub_commands(self, *, prefix='', system=None):
+        ''' Get a list of Command objects matching the `prefix` available on `system`
         '''
+        if system is None:
+            from ..config import system as sys
+            system = sys.v
+        match = lambda cmd: cmd.name.startswith(prefix) and (not cmd.systems or not system or system in cmd.systems)
     # Load a module
-        def _module(src):
-            return importlib.import_module(src, package=self.module.rsplit('.',2)[0])
+        module = lambda src: importlib.import_module(src, package=self.module.rsplit('.',2)[0])
     # yield a list of `Command` found by scanning dir(src)
         def _dir(src):
             for k in dir(src):
-                if isinstance(cmd:=getattr(src,k), CommandDfn) and cmd.name.startswith(prefix) and cmd is not self: yield cmd
+                if not isinstance(cmd:=getattr(src,k), CommandDfn): continue
+                if cmd is not self and match(cmd): yield cmd
     # yield a single Command `name` inside of the module loaded from `src`
         def _command_str(src, name):
-            if name.startswith(prefix): yield getattr(_module(src), name)
+            if name.startswith(prefix) and match(cmd:=getattr(module(src), name)): yield cmd
     # yield a list of `Command` objects inside the module loaded from `src`
         def _package_str(src):
-            yield from _dir(_module(src)) 
+            yield from _dir(module(src)) 
     # yield a list of matching `Command` objects from any source
         def _any(src):
             if isinstance(src, str):
                 yield from _command_str(*src.split('::')) if '::' in src else _package_str(src)
             elif isinstance(src, CommandDfn):
-                if src.name.startswith(prefix): yield src
+                if match(src): yield src
             elif callable(src):
                 yield from _heterogeneous(*srcs) if isinstance(srcs:=src(prefix, self), tuple) else _any(srcs)
     # Yield from a heterogeneous mixture of package-strings, Command objects, callables, and other dir()-able objects
@@ -110,16 +114,27 @@ class CommandDfn(type):
         return set(_heterogeneous(*self.sub_sources))
     
     
-    def get_sub_command(self, name):
+    def get_sub_command(self, *, name, system=None):
         ''' Given a `name` return a sub-command `Command` or raise if unable.
         '''
-        subs = self.sub_commands(name)
+        subs = self.sub_commands(prefix=name, system=system)
     # Only one match?
         if len(subs) == 1: return subs.pop()
     # No matches?
-        if not subs: raise UnknownSubCommand(name=name, subs=self.sub_commands())
+        if not subs: raise UnknownSubCommand(name=name, subs=self.sub_commands(system=system))
     # See if we have an exact match
         for s in subs:
             if s.name == name: return s
     # Too many matches
         raise AmbiguousSubCommand(name=name, subs=subs)
+
+
+    def sub_command_tree(self, *patterns, parent='', system=None):
+        name = f'{parent}.{self.name}'
+        yield name[1:], self
+        subs = {}
+        for prefix, sub_pattern in [z if len(z:=t.split('.',1)) == 2 else (z[0],'') for t in patterns] or [('','')]:
+            for sub in self.sub_commands(prefix=prefix, system=system):
+                subs[sub] = subs.get(sub,[]) + [sub_pattern]
+        for sub, sub_patterns in subs.items():
+            yield from sub.sub_command_tree(*sub_patterns, parent=name, system=system)

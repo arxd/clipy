@@ -46,6 +46,8 @@ def workflow(code='', /, *, list__l=False):
 
 @Command()
 def venv():
-    ''' Clean and upgrade the virtual environments created in ``.python`` and cached in ``core/info.json``
+    ''' Setup/clean python environments
     '''
-    raise NotImplementedError()
+    from libclipy.core.venv import Venv
+    for venv in Venv.all(): venv.venv_path()
+    

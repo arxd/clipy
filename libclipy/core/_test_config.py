@@ -1,13 +1,45 @@
 import pytest
 
-from .config import ConfigVar, UNSET
+from .config import ConfigVar, UNSET, Target
 
 
 @pytest.fixture(autouse=True, scope="function")
 def cleanup_vars():
+    all = Target.all
+    ConfigVar.preserve = False
     yield
-    ConfigVar._set = set()
-    
+    Target.all = all
+
+
+def test_system_dependant_target():
+    capture = []
+    @Target(system='sys1')
+    def a(): capture.append(1)
+
+    @Target(system='sys3, sys2')
+    def a(): capture.append(2)
+
+    @Target()
+    def a(): capture.append(3)
+
+    assert(list(zip(*a.system_fn))[0] == ('sys1', 'sys3', 'sys2', ''))
+
+    Target.call('a', 'sys1')
+    Target.call('a', 'sys2')
+    Target.call('a', 'sys3')
+    Target.call('a', 'sys4')
+    a.apply()
+    a.apply('sys2')
+    assert(capture == [1,2,2,3,3,2])
+
+
+def test_calling_nonexist_target_ok():
+    capture = []
+    @Target()
+    def a(): capture.append(1)
+    Target.call('z', 'sys')
+    assert(capture == [])
+        
 
 def test_configvar_constructor_1():
     ''' You can create a variable with only the constructor and a name '''

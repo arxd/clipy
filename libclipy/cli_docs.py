@@ -67,12 +67,7 @@ async def build(*, html=False):
     import asyncio
     coro = [sphinx('-b', 'html', '.', DIST/'html').call_async()]
     if not html: coro.append(sphinx('-b', 'markdown', '.', DIST/'markdown').call_async())
-    group = asyncio.gather(*coro)
-    try:
-        await group
-    finally:
-        group.cancel()
-        await group
+    await Cmd.all(*coro)
 
 
 

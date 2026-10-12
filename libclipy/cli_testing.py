@@ -20,7 +20,7 @@ if __name__ == '__main__':
     if code: sys.exit(code)
     cov.save()
     #cov.report(show_missing=True)
-    cov.html_report(directory="local/coverage") # FIXME change to work_root  (need to pass it through sys.apth)
+    cov.html_report(directory="local/coverage") # FIXME change to local_root  (need to pass it through sys.apth)
     cov.xml_report(outfile="local/coverage/coverage.xml")
     sys.exit(0)
 

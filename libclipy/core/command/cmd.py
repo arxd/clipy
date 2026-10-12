@@ -7,6 +7,7 @@ class Exec():
     ''' When this is returned as an output of a Command it triggers an os.exec()
     '''
     def __init__(self, **kwargs):
+        kwargs.setdefault('data', None)
         for k,v in kwargs.items(): setattr(self, k, v)
 
     def __call__(self):
@@ -22,6 +23,12 @@ class _Conditions():
     '''
     FMTS = ('', 'pass', 'null', 'utf8', 'bin', 'json')
     ACTIONS = ('', 'raise', 'code', 'value')
+
+    @staticmethod
+    def make_output(channels):
+        _get = lambda src: channels[src].data if isinstance(channels[src], Read) else None
+        return dict(stdout=_get('stdout'), stderr=_get('stderr'))
+
 
     def __init__(self):
         self.channels = {'stdout':'', 'stderr':''}
@@ -45,18 +52,17 @@ class _Conditions():
         self.conditions.append((condition, code, value))
 
 
-    def return_value(self, cmd, returncode, channels):
+    def return_value(self, cmd, returncode, output):
         keep = []
         def _fmt(src, fmt):
-            if not isinstance(channels[src], Read): return
-            data = channels[src].data
-            if fmt in ('','pass'): getattr(sys, src).buffer.write(channels[src].data)
+            if output[src] is None: return
+            if fmt in ('','pass'): getattr(sys, src).buffer.write(output[src])
             elif fmt == 'null': pass
-            elif fmt == 'bin': keep.append(data)
-            elif fmt == 'utf8': keep.append(data.decode('utf8'))
+            elif fmt == 'bin': keep.append(output[src])
+            elif fmt == 'utf8': keep.append(output[src].decode('utf8'))
             elif fmt == 'json':
                 import json
-                keep.append(json.loads(data.decode('utf8')))
+                keep.append(json.loads(output[src].decode('utf8')))
     # Execute the action
         def _do(stdout, stderr, action, value):
             _fmt('stdout', stdout)
@@ -64,7 +70,7 @@ class _Conditions():
             if action == 'code': keep.append(returncode)
             elif action == 'value': keep.append(value)
             v = None if not keep else keep[0] if len(keep) == 1 else keep
-            if action == 'raise': raise CmdError(keep=v, cmd=cmd, returncode=returncode, channels=channels, **({'msg':value} if value is not None else {}))
+            if action == 'raise': raise CmdError(keep=v, cmd=cmd, returncode=returncode, **output, **({'msg':value} if value is not None else {}))
             return v
     # Find the first matching condition
         for condition, code, value in self.conditions:
@@ -82,6 +88,17 @@ class Cmd():
     FIXME: say should record the message so that it can be attached to a CmdError
     '''
 
+    @staticmethod
+    async def all(*cmds):
+        import asyncio
+        group = asyncio.gather(*cmds)
+        try:
+            return await group
+        finally:
+            group.cancel()
+            await group
+
+
     def __init__(self, *args):
         if isinstance(args[0], (list, tuple)): args = (*args[0], *args[1:])
         elif not isinstance(args[0], (str, Path)): raise NotImplementedError() # FIXME: Pass a Command
@@ -89,6 +106,7 @@ class Cmd():
         if not isinstance(self.args, list): raise ValueError(f"Only a list of args is currently supported")
         self._env = {}
         self._conditions = None
+        self._sudo = None
 
 
     def __repr__(self):
@@ -101,19 +119,29 @@ class Cmd():
         cmd = Cmd(*self.args, *args)
         cmd._env = self._env.copy()
         return cmd
+
+
+    def sudo(self, user_group=''):
+        self._sudo = (*user_group.split(':'), '')[:2]
+        self.args[0:0] = ['sudo', '-E'] + ['-u', self._sudo[0]]*bool(self._sudo[0]) + ['-g', self._sudo[1]]*bool(self._sudo[1])
+        return self
     
 
     def say(self, msg=''):
-        import shlex
-        if self._env:
-            env = 'env -i ' if '!' in self._env else 'env '
-            env += ' '.join(f'{k}={shlex.quote(v)}' for k,v in self._env.items() if k!='!') + ' '
-        else:
-            env = ''
         if msg: print(msg)
-        print(f'  $ {env}{shlex.join(self.args)}')
+        print(f"  $ {self.shell_cmd}")
         return self
 
+
+    @property
+    def shell_cmd(self):
+        import shlex
+        cmd = [self.args[0], shlex.join(self.args[1:])]
+        if self._env:
+            vars = ' '.join(f'{k}={shlex.quote(v)}' for k,v in self._env.items() if k!='!')
+            cmd.insert(0, f"env -i {vars}" if '!' in self._env else f"{vars}")
+        return ' '.join(cmd)
+        
 
     def env(self, **kwargs):
         for k,v in kwargs.items(): self._env[k] = str(v)
@@ -191,7 +219,7 @@ class Cmd():
         return self
     
 
-    def call(self, fmt=None, value=None, *, stdin=None, kill=signal.SIGTERM):
+    def call(self, fmt=None, value=None, *, stdin=None, **kwargs):
         ''' This executes the command and supplies default case if none of the other cases match.
 
         Parameters:
@@ -223,42 +251,54 @@ class Cmd():
             stdin
                 What data do you want to send to stdin?  It can be a string, bytes, or ``None``.
 
-            kill
-                What signal will be used to kill the child (if killing is required).
         '''
-        from .iter_sync import SyncIterator
         c = self._get_conditions(fmt, value)
-        with SyncIterator(cmd=self, kill=kill, channels=self._channels(stdin=stdin, **c.channels)) as iter:
+        with self.iter_sync(stdin=stdin, **c.channels, **kwargs) as iter:
             iter.wait()
-        return c.return_value(self, iter.returncode, iter.channels)
+        return c.return_value(self, iter.returncode, _Conditions.make_output(iter.channels))
 
 
-    async def call_async(self, fmt=None, value=None, *, stdin=None, kill=signal.SIGTERM):
+    async def call_async(self, fmt=None, value=None, *, stdin=None, kill=signal.SIGTERM, **kwargs):
         ''' async version of `call()`
         '''
-        from .iter_async import AsyncIterator
         c = self._get_conditions(fmt, value)
-        async with AsyncIterator(cmd=self, kill=kill, channels=self._channels(stdin=stdin, **c.channels)) as iter:
+        async with self.iter_async(stdin=stdin, **c.channels, **kwargs) as iter:
             await iter.wait()
-        return c.return_value(self, iter.returncode, iter.channels)
+        return c.return_value(self, iter.returncode, _Conditions.make_output(iter.channels))
 
 
-    def each(self, kill=signal.SIGTERM, **channels):
-        from .iter_sync import SyncIterator
-        iter = SyncIterator(cmd=self, kill=kill, channels=self._channels(**channels))
+    def each(self, **kwargs):
+        ''' A generator for iter_sync so that we can catch GeneratorExit
+        '''
+        iter = self.iter_sync(**kwargs)
         try:
             for item in iter: yield item
         except GeneratorExit:
             iter.close()
 
 
-    async def each_async(self, kill=signal.SIGTERM, **channels):
-        from .iter_async import AsyncIterator
-        iter = AsyncIterator(cmd=self, kill=kill, channels=self._channels(**channels))
+    async def each_async(self, **kwargs):
+        ''' A generator for iter_async so that we can catch GeneratorExit
+        '''
+        iter = self.iter_async(**kwargs)
         try:
             async for item in iter: yield item
         except GeneratorExit:
             await iter.close()
+
+
+    def iter_sync(self, *, kill=signal.SIGTERM, **channels):
+        ''' Start the subprocess in a synchronous mode with `channels` connected
+        '''
+        from .iter_sync import SyncIterator
+        return SyncIterator(cmd=self, kill=kill, channels=self._channels(**channels))
+
+
+    def iter_async(self, *, kill=signal.SIGTERM, **channels):
+        ''' Start the subprocess in an asynchronous mode with `channels` connected
+        '''
+        from .iter_async import AsyncIterator
+        return AsyncIterator(cmd=self, kill=kill, channels=self._channels(**channels))
 
 
     # FIXME Move this to a better location
@@ -271,6 +311,6 @@ class Cmd():
             p = os.pipe()
             cmd = ReadPickle(src='cmd', fd=p[0], child_fd=p[1])
             out_fd.for_child(cmd.child_fd)
-        mm = Mem(src='mm', data=({var.path:(var.v_child if hasattr(var, 'v_child') else var.v) for var in ConfigVar._set}, cmd_info))
+        mm = Mem(src='mm', data=({var.src_path:var.export() for var in ConfigVar.preserved}, cmd_info))
         each_args = {} if not pipe else dict(cmd=cmd, mm=mm)
         return Cmd(venv_path, '-I', 'libclipy/core/entry_point.py', mm.size, mm.child_fd, project_root), each_args

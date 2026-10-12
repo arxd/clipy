@@ -30,19 +30,25 @@ class Command():
         return (Command._unpickle, (self.module,), self.__dict__)
 
 
-    def __new__(self, *args, sub_required=True):
+    def __new__(self, *args, sub_required=True, system=''):
         ''' You can't create instances of Command, only its subclasses.
         
         Instead, calling ``Command(...)`` serves as a decorator to a function that returns a subclass of Command.
         
         Parameters:
-            *args: You may specify zero or more sources of sub-commands of the following type:
+            *args
+                You may specify zero or more sources of sub-commands of the following type:
                 
                 * module : A module object (from an import statement) may be given directly.  Any top-level `CommandDfn` objects will be used as sub-commands.
                 * string : A relative or absolute module path.  This module will be loaded when the sub-commands need to be queried (such as when a sub-command is called, or a list of sub-commands is needed for documentation).  If the path uses the `path::cmd` syntax then only that command will be imported from the module.
                 * CommandDfn : A single command can be given directly.
                 * callable : When sub-commands are queried this is called with the prefix and CommandDfn to programmatically return one or more of the above sources of sub-commands.
-            sub_required (bool, optional): Does this command require a sub command? 
+
+            sub_required (bool, optional)
+                Does this command require a sub command?
+
+            system
+                Which system (or systems) is this command available on?
         '''
         if self is not Command: return super().__new__(self)
         def _wrap(fn):
@@ -55,7 +61,8 @@ class Command():
                 sub_required = args and sub_required,
                 is_async = async_gen or inspect.iscoroutinefunction(fn),
                 is_generator = async_gen or inspect.isgeneratorfunction(fn),
-                venv = []
+                venv = [],
+                systems = [s.strip() for s in (system if isinstance(system, (tuple,list)) else system.split(',')) if s.strip()],
             ))
         return _wrap
 
@@ -170,9 +177,11 @@ class Command():
         if not args:
             if type(self).sub_required: raise SubRequired(cmd=self)
             return
+    # Figure out our system
+        from ..config import system
     # Attempt to find the sub
         try:
-            sub = type(self).get_sub_command(args[0] or '<blank>')
+            sub = type(self).get_sub_command(name = args[0] or '<blank>', system=system.v)
         except (UnknownSubCommand, AmbiguousSubCommand) as e:
             if not e.subs: raise ExtraArguments(cmd=self, extra=args)
             raise e

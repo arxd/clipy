@@ -7,6 +7,7 @@ os.chdir(sys.path[0])
 from libclipy.core.logger import ClipyLogger, ClipyLogFilter
 logging.setLoggerClass(ClipyLogger)
 
+
 # Handle ctl-c SIGINT
 task = None
 loop = None
@@ -43,7 +44,6 @@ def output_pickle(v, stream):
         stream.flush()
     except BrokenPipeError:
         pass
-
 
 def _send_child_results(v):
     if v is None: v = {}
@@ -83,17 +83,12 @@ def run_coro(coro):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     task = loop.create_task(coro)
-# Run the loop
     try:
         return loop.run_until_complete(task)
-    except asyncio.CancelledError:
+    except asyncio.CancelledError: # task gets cancelled by the ctl-c signal handler above
         raise KeyboardInterrupt() from None
     finally:
-        # Tasks other than ours can still be pending (an asyncio.gather() whose parent was
-        # cancelled abandons its children).  A task suspended inside an async generator holds
-        # that generator mid-asend, and shutdown_asyncgens() can't aclose() a running generator
-        # ("aclose(): asynchronous generator is already running").  So settle the tasks first,
-        # exactly as asyncio.run() does.
+        # Cancel all tasks
         if pending := [t for t in asyncio.all_tasks(loop) if not t.done()]:
             for t in pending: t.cancel()
             loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
@@ -102,26 +97,34 @@ def run_coro(coro):
         # discards that task ("Task was destroyed but it is pending") and the finally never runs --
         # which would leak the child process that Command.each_async() cleans up there.
         loop.run_until_complete(loop.shutdown_asyncgens())
-        # each_async() hands venv_path() to the default executor, whose threads outlive the loop
+        # Command.each_async() hands venv_path() to the default executor, whose threads outlive the loop
         loop.run_until_complete(loop.shutdown_default_executor())
         loop.close()
 
 
-import mmap, pickle, traceback
-from libclipy.core.config import initialize_config, out_fd, verbosity, format_out
-
 # Read our input from shared memory
+import mmap, pickle, traceback
 mm_size, mm_fd = map(int, sys.argv[1:3])
 mm = mmap.mmap(mm_fd, mm_size)
 _config_data, _cmd_info = pickle.loads(mm[:mm_size])
 mm.close()
 os.close(mm_fd)
 
-# Use the _config_data to initilize our ConfigVar values
-initialize_config(_config_data)
+# Configuration in three steps: 1) parent/env changes things 2) targets change defaults 3) final changes things
+from libclipy.core.config import ConfigVar, target, out_fd, verbosity, format_out, Target
+import config # This makes sure all the targets are created
+for k,v in _config_data.items(): ConfigVar.set_by_name(k,v)
+ConfigVar.lock = True
+ConfigVar.preserve = False
+for t in target.v: Target.call(t)
+ConfigVar.lock = False
+Target.call('final')
+ConfigVar.preserve = True
+
 # With the configured verbosity we can now finish setting up logging
 logging.getLogger().setLevel((11 if verbosity.v > 0 else 20)-verbosity.v)
 ClipyLogFilter.filter_logs().stderr('{lvl} {message}{names} {rloc} {obj}')
+
 
 # Logs from these will be subject to the configured logging preferences
 from libclipy.core.command.command import Command

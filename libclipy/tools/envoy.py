@@ -199,7 +199,7 @@ class Envoy(SysTool):
     version_probe = r'^envoy\s+version.*?/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)/.*$'
     cmd = ConfigVar('Envoy.cmd The path to the envoy executable', default='envoy')
     version = ConfigVar('Envoy.version The desired version for envoy', default='1.30')
-    config = ConfigVar('Envoy.config The location of the envoy config file (resolved relative to work_root', default='envoy/config.json')
+    config = ConfigVar('Envoy.config The location of the envoy config file (resolved relative to local_root', default='envoy/config.json')
 
     @classmethod
     def install_help_generic(self):
@@ -312,13 +312,13 @@ class Envoy(SysTool):
 
     @property
     def config_path(self):
-        from config import work_root
-        return work_root.path(Envoy.config.v)
+        from config import local_root
+        return local_root.path(Envoy.config.v)
     
 
     def save(self):
-        from config import work_root
-        with work_root.open(Envoy.config.v, 'w', encoding='utf8') as f:
+        from config import local_root
+        with local_root.open(Envoy.config.v, 'w', encoding='utf8') as f:
             cfg_obj = json.loads(repr(self.cfg))
             if Envoy.config.v.suffix == '.json':
                 json.dump(cfg_obj, f, indent=4)

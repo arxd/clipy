@@ -11,13 +11,17 @@
         "sed",
         "envoy",
         "nginx",
+        "nvm",
         "web",
         "openssl",
         "docs",
         "cli.grep",
         "cli.testing",
         "cli.install",
-        "cli.workflow"
+        "cli.workflow",
+        "cli.lifecycle",
+        "cli.gcp",
+        "cli.web"
     ],
     "venvs": {
         "251b9a698f6e478b8abd62cf71e6ff7f59023969": {
@@ -63,6 +67,93 @@
                 "tomli==2.4.1",
                 "urllib3==2.6.3",
                 "zipp==3.23.1"
+            ]
+        },
+        "f707c09a860d4daea4e82402cb07ce0f4436f543": {
+            "folder": "fe6468ab7b3909266d08cc04ea8a556d",
+            "req": [
+                "backports-asyncio-runner==1.2.0",
+                "coverage==7.10.7",
+                "exceptiongroup==1.3.1",
+                "iniconfig==2.1.0",
+                "packaging==26.3",
+                "pluggy==1.6.0",
+                "pygments==2.21.0",
+                "pytest==8.4.2",
+                "pytest-asyncio==1.2.0",
+                "pytest-timeout==2.4.0",
+                "tomli==2.4.1",
+                "typing-extensions==4.16.0",
+                "wcwidth==0.9.1"
+            ]
+        },
+        "2e241e65ee237ea5ee14ba9a367cdc813556cf4f": {
+            "folder": "864181cd071c69c6dd0cdd6727158c8f",
+            "req": [
+                "aiohappyeyeballs==2.6.1",
+                "aiohttp==3.13.5",
+                "aiosignal==1.4.0",
+                "async-timeout==5.0.1",
+                "attrs==26.1.0",
+                "frozenlist==1.8.0",
+                "idna==3.20",
+                "multidict==6.7.1",
+                "propcache==0.4.1",
+                "typing-extensions==4.16.0",
+                "wcwidth==0.9.1",
+                "yarl==1.22.0"
+            ]
+        },
+        "09bf1074488b6de086cd30586f07d36dd5cd8ad7": {
+            "folder": "d814d8f685a0bcedfc52e2e577b7601d",
+            "req": [
+                "bcrypt==5.0.0",
+                "cffi==2.0.0",
+                "cryptography==50.0.2",
+                "invoke==3.0.3",
+                "paramiko==5.0.0",
+                "pycparser==2.23",
+                "pynacl==1.6.2",
+                "typing-extensions==4.16.0",
+                "wcwidth==0.9.2"
+            ]
+        },
+        "f9f81143aa2839d1d21ae644c9b4f8269be09bbd": {
+            "folder": "e701bc347e8c84b0db7660b4d67e06ae",
+            "req": [
+                "wcwidth==0.9.2"
+            ]
+        },
+        "2b69d81c7754e3f47a43ab54c1e745750fb39052": {
+            "folder": "3e5343cd21cd75f6bdddc77d1a780ebc",
+            "req": [
+                "bcrypt==5.0.0",
+                "cffi==2.0.0",
+                "cryptography==50.0.2",
+                "invoke==3.0.3",
+                "paramiko==5.0.0",
+                "pycparser==2.23",
+                "pynacl==1.6.2",
+                "typing-extensions==4.16.0",
+                "wcwidth==0.9.2"
+            ]
+        },
+        "0877496d0825da203a49b0b3858c44d452aa91e1": {
+            "folder": "25158b39098800c25fd2da4c50a02069",
+            "req": [
+                "backports-asyncio-runner==1.2.0",
+                "coverage==7.10.7",
+                "exceptiongroup==1.3.1",
+                "iniconfig==2.1.0",
+                "packaging==26.3",
+                "pluggy==1.6.0",
+                "pygments==2.21.0",
+                "pytest==8.4.2",
+                "pytest-asyncio==1.2.0",
+                "pytest-timeout==2.4.0",
+                "tomli==2.5.0",
+                "typing-extensions==4.16.0",
+                "wcwidth==0.9.2"
             ]
         }
     }

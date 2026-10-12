@@ -1,7 +1,23 @@
+from .config import ConfigVar
+from pathlib import Path
+
 
 class Venv():
     ''' This represents a desired virtual environment for a command.
     '''
+    root = ConfigVar('Venv.root The path where the python virtual environments will be kept', default='.python', cast=Path)
+
+    @classmethod
+    def all(self, *patterns):
+        from cli import main
+        venvs = {}
+        for name, cmd in main.sub_command_tree(*patterns):
+            for venv in cmd.venv or main.venv:
+                venvs.setdefault(hash := venv.hash(), (venv,[]))
+                venvs[hash][1].append((name,cmd))
+        return dict(venvs.values())
+
+
     def __init__(self, parent=None, *, python=None, req=None, system_packages=None, system=None):
         ''' Define a virtual environment.
 
@@ -29,6 +45,11 @@ class Venv():
         self.system = system and set(_to_list(system))
 
 
+    def __repr__(self):
+        args = ', '.join(f'{k}={v!r}' for k,v in self.__dict__.items())
+        return f"Venv#{self.hash()}({args})"
+
+    
     def computed(self):
         import sys
         try: return self._computed
@@ -52,10 +73,13 @@ class Venv():
         return not self_systems or not (systems - self_systems)
 
 
-    def hash(self):
+    def hash(self, system=''):
+        if not hash:
+            from .config import system as sys
+            system = sys.v
         import hashlib
-        python, req, system_packages, system = self.computed()
-        fingerprint = ';'.join(sorted(python)) + ';'.join(sorted(req)) + ';'.join(sorted(system)) + f';{system_packages}'
+        python, req, system_packages, _ = self.computed()
+        fingerprint = ';'.join(sorted(python)) + ';'.join(sorted(req)) + f';{system_packages};{system}'
         return hashlib.sha256(fingerprint.encode()).hexdigest()[:40]
 
 
@@ -66,29 +90,26 @@ class Venv():
         return cmd
     
 
-    def venv_path(self, path=''):
-        try:
-            return self._venv_path/path
-        except AttributeError:
-            import json, random
-            from .config import work_root
-            with open('libclipy/core/info.json', 'r', encoding='utf8') as f: info = json.load(f)
-            hash = self.hash()
-            if hash not in info['venvs']:
-                info['venvs'][hash] = {'folder':random.randbytes(16).hex()}
-            self._venv_path = work_root.path('.python') / info['venvs'][hash]['folder']
-            assert(self._venv_path.is_absolute()), f"bad work_root: {work_root.v}"
-            if not self._venv_path.exists():
-                python, req, system_packages, system = self.computed()
-                print(f"Create venv: {self._venv_path} system:{system} python:{python} system_packages?{system_packages} req:{' '.join(req)}")
-                self.uv('venv', '-p', ','.join(python), *('--system-site-packages',)*system_packages, self._venv_path)
-                if 'req' in info['venvs'][hash]:
-                    self.uv('pip', 'install', '--python', self._venv_path, '-r', '-', stdin='\n'.join(info['venvs'][hash]['req']))
-                else:
-                    self.uv('pip', 'install', '--python', self._venv_path, '-r', '-', stdin='\n'.join(req))
-                    out = self.uv('pip', 'freeze', '--python', self._venv_path, read=True)
-                    info['venvs'][hash]['req'] = [o.strip() for o in out.split('\n') if o.strip()]
-                    with open('libclipy/core/info.json', 'w', encoding='utf8') as f: json.dump(info, f, ensure_ascii=False, indent=4)
+    def venv_path(self, path='', system=''):
+        try: return self._venv_path/path
+        except AttributeError: pass 
+        import json, random
+        with open('libclipy/core/info.json', 'r', encoding='utf8') as f: info = json.load(f)
+        hash = self.hash(system)
+        if hash not in info['venvs']:
+            info['venvs'][hash] = {'folder':random.randbytes(16).hex()}
+        self._venv_path = (Venv.root.v / info['venvs'][hash]['folder']).expanduser()
+        if not self._venv_path.exists():
+            python, req, system_packages, _ = self.computed()
+            print(f"Create {self!r}")
+            self.uv('venv', '-p', ','.join(python), *('--system-site-packages',)*system_packages, self._venv_path)
+            if 'req' in info['venvs'][hash]:
+                self.uv('pip', 'install', '--python', self._venv_path, '-r', '-', stdin='\n'.join(info['venvs'][hash]['req']))
+            else:
+                self.uv('pip', 'install', '--python', self._venv_path, '-r', '-', stdin='\n'.join(req))
+                out = self.uv('pip', 'freeze', '--python', self._venv_path, read=True)
+                info['venvs'][hash]['req'] = [o.strip() for o in out.split('\n') if o.strip()]
+                with open('libclipy/core/info.json', 'w', encoding='utf8') as f: json.dump(info, f, ensure_ascii=False, indent=4)
         return self._venv_path/path
     
 

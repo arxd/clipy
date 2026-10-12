@@ -1,21 +1,20 @@
 import os
 from pathlib import Path
 from .sys_tool import SysTool
-from cli import ConfigVar
+from cli import ConfigVar, Cmd
 
 
 class Server():
-    def __init__(self, *, nginx, **kwargs):
-        kw = dict(no_cache=True, port=nginx.port, cert='cert', locs=[], proxy_intercept_errors=True, error_codes=[404, 500, 502, 503, 504], root=None)
+    def __init__(self, **kwargs):
+        kw = dict(name='_', default_server=False, no_cache_headers=False, cert=None, locs=[], proxy_intercept_errors=True, error_codes=[404, 500, 502, 503, 504], root=None)
         kw['server'] = [
             'rewrite ^(.*)/$ $1/index.html last', # rewrite trailing slashes to index.html
         ]
         kw.update(kwargs)
-        if kw['port'] == 80 and kw['cert']: kw['port'] = 443
         for k,v in kw.items(): setattr(self, k, v)
         if self.cert:
             from .openssl import OpenSSL
-            OpenSSL().ensure_server_cert(nginx.prefix/self.cert)
+            OpenSSL().ensure_server_cert(self.nginx.prefix/self.cert, san=[self.name])
 
 
     def loc(self, *loc, ws=False):
@@ -34,6 +33,7 @@ class Server():
 
 
     def proxy_cache(self, loc, host, zone='default_zone', lines=[]):
+        if zone not in self.nginx.proxy_cache_zones: self.nginx.proxy_cache_path(zone=zone)
         self.locs.append([loc,
             f'proxy_pass https://{host}/',
             'proxy_ssl_server_name on', # So that nginx passes SNI host upstream
@@ -51,12 +51,12 @@ class Server():
 
 
     def config(self):
-        yield f'listen {self.port}' + ' ssl'*bool(self.cert)
+        yield f'listen {self.port}' + ' ssl'*bool(self.cert) + ' default_server'*self.default_server
         yield f'server_name {self.name}'
         if self.cert: yield from [f'ssl_certificate {self.cert}.pem', f'ssl_certificate_key {self.cert}-key.pem']
         if self.root: yield f'root {self.root}'
         if self.proxy_intercept_errors: yield 'proxy_intercept_errors on'
-        if self.no_cache: yield from [
+        if self.no_cache_headers: yield from [
             'open_file_cache off',
             'add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always',
             'add_header Pragma "no-cache" always',
@@ -75,10 +75,10 @@ class Server():
 
 class Nginx(SysTool):
 
-    version_probe = (lambda s: (s.cmd.v, '-v')), r'^.*nginx/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
+    version_probe = lambda s: Cmd(s.cmd.v, '-v').on(0,',utf8'), r'^.*nginx/(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
     cmd = ConfigVar('Nginx.cmd The path to the nginx executable', default='nginx')
-    version = ConfigVar('Nginx.version The required version of nginx', default='1.29')
-    prefix = ConfigVar('Nginx.prefix The base directory (resolved relative to work_root) for nginx files (config, logs, etc.)', default='nginx')
+    version = ConfigVar('Nginx.version The required version of nginx', default='1.26')
+    prefix = ConfigVar('Nginx.prefix The base directory (resolved relative to local_root) for nginx files (config, logs, etc.)', default='nginx')
     
     @classmethod
     def install_help_generic(self):
@@ -86,10 +86,10 @@ class Nginx(SysTool):
 
 
     def __init__(self, **kwargs):
-        from config import work_root
-        self.cfg = dict(workers=1, port=8080, servers={}, no_cache=True, http=[], upstreams={}, max_body_size='128k')
+        from config import local_root
+        self.cfg = dict(workers=1, port=8080, servers=[], no_cache_headers=False, http=[], upstreams={}, max_body_size='128k', proxy_cache_zones=set())
         self.cfg.update(kwargs)
-        self.prefix = work_root.path(Nginx.prefix.v)
+        self.prefix = local_root.path(Nginx.prefix.v)
         self.prefix.mkdir(parents=True, exist_ok=True)
         if not (self.prefix/'mime.types').exists():
             import urllib.request
@@ -103,12 +103,13 @@ class Nginx(SysTool):
             f'client_max_body_size {self.max_body_size}',
             'include mime.types',
             'server_names_hash_bucket_size 64',
-        ] + [f'{x}_temp_path {self.prefix}' for x in ['client_body', 'proxy', 'fastcgi','uwsgi','scgi']]
+        ] + [f'{x}_temp_path {self.prefix}' for x in ['client_body', 'proxy', 'fastcgi', 'uwsgi', 'scgi']]
 
 
     def proxy_cache_path(self, path=None, zone='default_zone'):
         path = path or self.prefix/'proxy_cache'
         path.mkdir(parents=True, exist_ok=True)
+        self.proxy_cache_zones.add(zone)
         self.http += [f'proxy_cache_path {path} levels=1:2 keys_zone={zone}:10m max_size=1g inactive=30d use_temp_path=off']
 
 
@@ -117,14 +118,16 @@ class Nginx(SysTool):
 
 
     def http_to_https(self):
-        if self.port != 80: return None
-        return self.server(name='_', port=80, cert=None, no_cache=False, server=['return 301 https://$host$request_uri'])
+        return self.server(name='_', server=['return 301 https://$host$request_uri'])
+
+
+    def drop_unkown_hosts(self, **kwargs):
+        return self.server(name='_', server=['return 444'] if kwargs.get('cert') else ['ssl_reject_handshake on'], **kwargs)
 
 
     def server(self, **kwargs):
-        d = Server(nginx=self, **kwargs)
-        self.servers[d.name] = d
-        return d
+        self.servers.append(Server(nginx=self, **kwargs))
+        return self.servers[-1]
 
 
     def upstream(self, *hosts, name='default_upstream', hash=None):
@@ -134,7 +137,7 @@ class Nginx(SysTool):
 
     def config(self):
         for name,hosts in self.upstreams.items(): self.http.append((f'upstream {name}', list(hosts)))
-        for d in self.servers.values(): self.http.append(('server', list(d.config())))
+        for d in self.servers: self.http.append(('server', list(d.config())))
         cfg = [
             f'daemon off',
             f'worker_processes {self.workers}',

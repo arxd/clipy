@@ -1,6 +1,6 @@
 import shutil, json, hashlib
 from pathlib import Path
-from config import work_root
+from config import local_root
 from collections import namedtuple
 from libclipy.tools.git import Git
 from cli import UsageError
@@ -68,9 +68,6 @@ class Project():
                 if f.is_relative_to(Path('libclipy/core/dep')): return True
             yield from [f for f in clipy.git.ls('libclipy/core') if not _exclude(f)]
         elif feature == 'web':
-            yield from self._feature_files('nginx', all_features)
-            yield from self._feature_files('openssl', all_features)
-            yield 'libclipy/cli_web.py'
             yield from [f for f in clipy.git.ls('web')]
             yield from [f for f in clipy.git.ls('libclipy/web')]
         elif feature == 'dep':
@@ -162,7 +159,7 @@ class Projects():
     def all(self):
         if not hasattr(self, '_all'):
             try:
-                with work_root.open('projects.json', 'rb') as f:
+                with local_root.open('projects.json', 'rb') as f:
                     self._all = {p:Project(p, sync_hashes=s) for p,s in json.load(f).items()}
             except Exception:
                 self._all = {}
@@ -187,6 +184,6 @@ class Projects():
 
 
     def save(self):
-        with work_root.open('projects.json', 'w', encoding='utf8') as f:
+        with local_root.open('projects.json', 'w', encoding='utf8') as f:
             json.dump({str(p):p.sync_hashes for p in self._all.values()}, f, ensure_ascii=False, indent=2)
     

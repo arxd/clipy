@@ -343,7 +343,7 @@ class ConsoleBuffer():
 
     def __init__(self, stream, color=None):
         self.set_stream(stream, color=color)
-        self.set_doc_lang(False,False)
+        #self.set_doc_lang(False,False)
         self.blank = {}
 
 

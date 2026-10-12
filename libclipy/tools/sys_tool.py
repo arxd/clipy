@@ -1,26 +1,8 @@
 import re
 from functools import partial
-from libclipy.core.errors import UsageError
+from libclipy.core.errors import MissingTool, CmdError
 from libclipy.core.pretty import CLR
-from libclipy.core.command.cmd import Exec, Cmd
-
-
-class MissingTool(UsageError):
-    def __init__(self, *, tool, msg, need=None, got=None, help=None):
-        msg = [f"{CLR.r}{msg}{CLR.x}"]
-        if need: msg += [f"{CLR.y}{tool.__mro__[1].__name__}{CLR.x} requires version >= {CLR.m}{need}{CLR.x}"]
-        if got:
-            msg += [f'Version {CLR.r}{got}{CLR.x} was found.']
-        if help:
-            if help == True:
-                import platform
-                if hasattr(tool, 'install_help_generic'): msg += [''] + tool.install_help_generic()
-                pfm = 'install_help_' + platform.platform().lower().split('-')[0]
-                if hasattr(tool, pfm): msg += [''] + getattr(tool, pfm)()
-            else:
-                msg += [help] if isinstance(help, str) else help            
-        super().__init__(msg)
-
+from libclipy.core.command.cmd import Cmd
 
 
 class VerifiedTool(type):
@@ -61,7 +43,7 @@ class VerifiedTool(type):
         if self.version_probe is None:
             assert(version is None), f"A version {version!r} is being specified without a defined version_probe"
         else:
-            probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else (lambda s: (s.cmd.v, '--version'), self.version_probe)
+            probe, probe_re = self.version_probe if isinstance(self.version_probe, tuple) else (lambda s: Cmd(s.cmd.v, '--version').on(0,'utf8'), self.version_probe)
             self.ensure_version(probe(self), probe_re, version)
 
 
@@ -69,10 +51,11 @@ class VerifiedTool(type):
         ''' Run the probe command and collect all output
         '''
         try:
-            out = Cmd(*probe).call('utf8,utf8')
-            return (out[0]+out[1]).strip()
+            return probe.call().strip()
+        except CmdError as e:
+            raise MissingTool(tool=self.__mro__[1], msg=f"Tool probe failed with code {e.returncode}:", shell_cmd=probe.shell_cmd, need=version, help=True)
         except Exception as e:
-            raise MissingTool(tool=self, msg=f"Tool probe failed: {CLR.m}{probe}{CLR.x}", need=version, help=True)
+            raise MissingTool(tool=self.__mro__[1], msg=f"{e!r}:", shell_cmd=probe.shell_cmd, need=version, help=True)
 
 
     def probe_match(self, got, probe_re):
@@ -82,7 +65,7 @@ class VerifiedTool(type):
             assert(m:=re.search(probe_re, got, re.I | re.MULTILINE))
             return m, got[m.start():m.end()]
         except:
-            raise MissingTool(tool=self, got=got, msg=f"Probe output doesn't match probe regular expression: {CLR.y}{probe_re}{CLR.x}")
+            raise MissingTool(tool=self.__mro__[1], msg=f"Probe output {CLR.r}{got!r}{CLR.x} doesn't match probe regular expression: {CLR.y}{probe_re}{CLR.x}")
 
 
     def version_check(self, m, got, version):
@@ -98,7 +81,7 @@ class VerifiedTool(type):
                     assert((delta := int(v) - int(m[f'v{i}'])) <= 0), "Minimum version requirement not met"
                     if delta < 0: break
         except Exception as e:
-            raise MissingTool(tool=self, msg=str(e), got=got, need=version, help=True)
+            raise MissingTool(tool=self.__mro__[1], msg=str(e), got=got, need=version, help=True)
 
     
     def ensure_version(self, probe, probe_re, version):

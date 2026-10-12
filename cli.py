@@ -3,23 +3,24 @@ import sys, os, pathlib
 
 # Program constants
 name = 'clipy'
-version = '1.1.0'
+version = '1.1.1'
 env_prefix = 'CLIPY_'
 
 # Move to the project root and add the project root to sys.path
-project_root = pathlib.Path(os.path.dirname(os.path.abspath(sys.modules['cli' if 'cli' in sys.modules else '__main__'].__file__)))
+project_root = pathlib.Path(sys.modules['cli' if 'cli' in sys.modules else '__main__'].__file__).resolve().parent
 if __name__ == '__main__':
     sys.path.insert(0, str(project_root))
     os.chdir(project_root)
-    from libclipy.core.config import system
-    system.v = os.environ.get(f'{env_prefix}SYSTEM', 'dev')
-
+    # system and local_root are needed early for Venv selection and initalization, and must be passed down to sub-commands
+    from libclipy.core.config import set_env_vars
+    set_env_vars(env_prefix)
+    
 from libclipy.core.command.command import Command
 from libclipy.core.venv import Venv
 from libclipy.core.command.cmd import Cmd
 
 @Venv(python="3.9", req='wcwidth')
-@Command('libclipy.cli_install', 'libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.cli_docs::docs', 'libclipy.cli_testing', sub_required=False)
+@Command('libclipy.cli_install', 'libclipy.cli_lifecycle', 'libclipy.tools.nvm::nvm', 'libclipy.cli_gcp::gcp', 'libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.cli_docs::docs', 'libclipy.cli_testing', sub_required=False)
 def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=False, format__f=None):
     ''' The universal command line interface for all functionality contained in this project.
 
