@@ -4,6 +4,7 @@ from .sys_tool import SysTool
 from cli import ConfigVar, UsageError, Cmd
 from libclipy.core.pretty import CLR
 from contextlib import contextmanager
+from libclipy.core.config import local_root
 
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -24,8 +25,8 @@ class GCloud(SysTool):
     version = ConfigVar('GCloud.version The desired config version for gcloud', default='511')
     default_project_id = ConfigVar('GCloud.default_project_id The default project id to use', default='')
     default_zone = ConfigVar('GCloud.default_zone The default zone to use', default='')
-    iap_ssh_key = ConfigVar('GCloud.iap_ssh_key The ssh key used when connecting to an instance through an iap tunnel', default='local/iap_ssh_key')
-    instance_cache = ConfigVar('GCloud.instance_cache A json cachefile for instance/zone mappings', default='local/instance_zone_cache.json')
+    iap_ssh_key = ConfigVar('GCloud.iap_ssh_key The ssh key used when connecting to an instance through an iap tunnel', default='iap_ssh_key')
+    instance_cache = ConfigVar('GCloud.instance_cache A json cachefile for instance/zone mappings', default='instance_zone_cache.json')
 
     @classmethod
     def install_help_generic(self):
@@ -76,7 +77,7 @@ class GCloud(SysTool):
 
     @property
     def ssh_key(self):
-        key = Path(GCloud.iap_ssh_key.v)
+        key = local_root.path(GCloud.iap_ssh_key.v)
         if not key.exists():
             import paramiko
             rsa = paramiko.RSAKey.generate(2048)
@@ -102,10 +103,10 @@ class GCloud(SysTool):
     def instance_to_zone(self, name):
         import json
         try:
-            with open(self.instance_cache.v, 'r', encoding='utf8') as f: return json.load(f)[name]
+            with open(local_root.path(self.instance_cache.v), 'r', encoding='utf8') as f: return json.load(f)[name]
         except:
             data = {v['name']:v['zone'].rsplit('/',1)[-1] for v in self.compute('instances', 'list', json=True).call()}
-            with open(self.instance_cache.v, 'w', encoding='utf8') as f: json.dump(data, f, ensure_ascii=False)
+            with local_root.open(self.instance_cache.v, 'w', encoding='utf8') as f: json.dump(data, f, ensure_ascii=False)
             if name not in data: raise UsageError(f"Instance {name!r} not found:  {' '.join(data.keys())}")
             return data[name]
 

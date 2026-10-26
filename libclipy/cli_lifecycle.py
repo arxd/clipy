@@ -10,7 +10,6 @@ class SetupJournal():
     # You can add new cmds to the **end** of `CMD` without changing the version.
     # Otherwise change the SETUP_VERSION with any change to CMDS so that you don't accedentally run setup in an incompatable environment.
     version = 0
-    deploy_start = 7 # The index of the `systemctl stop app` command
 
     def __init__(self):
         self.path = Path('/opt/app/setup_journal.json')
@@ -115,19 +114,21 @@ def setup(*, start=-1, stop=0, git_commit=''):
         Cmd('apt-get', 'install', '-y', *APT_PACKAGES).env(DEBIAN_FRONTEND='noninteractive').sudo(),
         (_setup_log_rotation, {'log_file':log_file}),
         (_install_app_service, {'log_file':log_file}),
+        None,
         Cmd('systemctl', 'stop', 'app').sudo(),
         (_install_app, {'log_file':log_file}|vars),
         Cmd('app', 'pre-run'),
         Cmd('systemctl', 'start', 'app').sudo(),
     ]
     journal = SetupJournal()
+    if start == -2: start = CMDS.index(None)
     start = journal.begin(commit=git_commit, start=start)
 # Run commands from the checkpoint
     print(f"Starting setup from #{start}")
     for cmd in CMDS[start:(stop or len(CMDS))]:
         if isinstance(cmd, Cmd):
             cmd().say().call()
-        else:
+        elif cmd is not None:
             cmd[0](**cmd[1])
         journal.step()
 

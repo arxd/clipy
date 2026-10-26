@@ -111,8 +111,8 @@ class Venv():
                 info['venvs'][hash]['req'] = [o.strip() for o in out.split('\n') if o.strip()]
                 with open('libclipy/core/info.json', 'w', encoding='utf8') as f: json.dump(info, f, ensure_ascii=False, indent=4)
         return self._venv_path/path
-    
 
+    
     def uv(self, *args, read=None, stdin=None):
         # FIXME: Change to Cmd
         import subprocess

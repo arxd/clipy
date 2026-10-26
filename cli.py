@@ -3,7 +3,7 @@ import sys, os, pathlib
 
 # Program constants
 name = 'clipy'
-version = '1.1.1'
+version = '1.1.2'
 env_prefix = 'CLIPY_'
 
 # Move to the project root and add the project root to sys.path

@@ -266,42 +266,40 @@ def setup(name=None, *, system='cloud', port__p=0, target__t='prod', deploy=Fals
     from libclipy.tools.git import Git
     from libclipy.core.errors import CmdError
     from cli import env_prefix
-    if deploy:
-        from .cli_lifecycle import SetupJournal
-        start = SetupJournal.deploy_start
     gcloud = GCloud(project_id=True)
-    with gcloud.ssh(vm_name=name, port=port__p) as ssh:
-    # First check to see what the setup status is on this machine
-        try:
-            ssh.cmd('uv --version').call()
-        except CmdError:
-            ssh.cmd('sudo groupadd -f -r app').say().call()
-            _write_file(ssh, '/usr/local/bin/oslogin_auto_app_group',
-                "#!/usr/bin/env python3",
-                "import os, sys, grp, subprocess",
-                "if not (user:=os.environ.get('PAM_USER')) or user == 'root': sys.exit(0)",
-                "user_in_group = user in grp.getgrnam('app').gr_mem",
-                "if os.path.isfile(os.path.join('/var/google-sudoers.d', user)):",
-                "    if not user_in_group: subprocess.run(['/usr/sbin/usermod','-a','-G','app',user])",
-                "elif user_in_group: subprocess.run(['/usr/bin/gpasswd','-d',user,'app'])",
-                chmod = '755',
-            )
+    while True: # We need to logout and log back in after adding the `app` group
+        with gcloud.ssh(vm_name=name, port=port__p) as ssh:
             try:
-                ssh.cmd('grep oslogin_auto_app_group /etc/pam.d/sshd').call()
+                ssh.cmd('uv --version').call()
             except CmdError:
-                # Add the current user so they don't have to re-login to be in the app group
-                ssh.cmd(f'sudo -E PAM_USER=$USER oslogin_auto_app_group').say().call()
-                _write_file(ssh, '/etc/pam.d/sshd', '','','session optional pam_exec.so /usr/local/bin/oslogin_auto_app_group', append=True)
-            ssh.cmd('sudo apt-get install -y rsync').say().call()
-            ssh.cmd('sudo mkdir -p /var/opt/uv/python /var/opt/uv/tools').say().call()
-            ssh.cmd('sudo chown -R root:app /var/opt/uv').call()
-            ssh.cmd('sudo chmod -R 775 /var/opt/uv').call()
-            ssh.cmd('sudo find /var/opt/uv -type d -exec chmod g+s {} +').call() # created files stay owned by the 'app' group
-            ssh.cmd('curl -LsSf https://astral.sh/uv/install.sh | sudo UV_INSTALL_DIR="/usr/local/bin" INSTALLER_NO_MODIFY_PATH=1 sh').say().call()
-            ssh.cmd('sudo mv /usr/local/bin/uv /usr/local/bin/_uv').say().call()
-            _write_file(ssh, '/usr/local/bin/uv', '#!/bin/sh', 'export UV_TOOL_DIR="/var/opt/uv/tools"', 'export UV_PYTHON_INSTALL_DIR="/var/opt/uv/python"', 'exec /usr/local/bin/_uv "$@"', chmod='755')
-        ssh.iap.rsync().sync('app', '!local/***', *Git().ls())
-        ssh.cmd(f'app/cli.py -t {target__t} setup --stop {stop} --start {start} --git-commit {Git().head_commit()}').env(PYTHONUNBUFFERED=1, **{f'{env_prefix}SYSTEM': system}).say().call(pty=True)
+                ssh.cmd('sudo groupadd -f -r app').say().call()
+                _write_file(ssh, '/usr/local/bin/oslogin_auto_app_group',
+                    "#!/usr/bin/env python3",
+                    "import os, sys, grp, subprocess",
+                    "if not (user:=os.environ.get('PAM_USER')) or user == 'root': sys.exit(0)",
+                    "user_in_group = user in grp.getgrnam('app').gr_mem",
+                    "if os.path.isfile(os.path.join('/var/google-sudoers.d', user)):",
+                    "    if not user_in_group: subprocess.run(['/usr/sbin/usermod','-a','-G','app',user])",
+                    "elif user_in_group: subprocess.run(['/usr/bin/gpasswd','-d',user,'app'])",
+                    chmod = '755',
+                )
+                try:
+                    ssh.cmd('grep oslogin_auto_app_group /etc/pam.d/sshd').call()
+                except CmdError:
+                    #ssh.cmd(f'sudo -E PAM_USER=$USER oslogin_auto_app_group').say().call()
+                    _write_file(ssh, '/etc/pam.d/sshd', '','','session optional pam_exec.so /usr/local/bin/oslogin_auto_app_group', append=True)
+                    continue # Logout and login again
+                ssh.cmd('sudo apt-get install -y rsync').say().call()
+                ssh.cmd('sudo mkdir -p /var/opt/uv/python /var/opt/uv/tools').say().call()
+                ssh.cmd('sudo chown -R root:app /var/opt/uv').call()
+                ssh.cmd('sudo chmod -R 775 /var/opt/uv').call()
+                ssh.cmd('sudo find /var/opt/uv -type d -exec chmod g+s {} +').call() # created files stay owned by the 'app' group
+                ssh.cmd('curl -LsSf https://astral.sh/uv/install.sh | sudo UV_INSTALL_DIR="/usr/local/bin" INSTALLER_NO_MODIFY_PATH=1 sh').say().call()
+                ssh.cmd('sudo mv /usr/local/bin/uv /usr/local/bin/_uv').say().call()
+                _write_file(ssh, '/usr/local/bin/uv', '#!/bin/sh', 'export UV_TOOL_DIR="/var/opt/uv/tools"', 'export UV_PYTHON_INSTALL_DIR="/var/opt/uv/python"', 'exec /usr/local/bin/_uv "$@"', chmod='755')
+            ssh.iap.rsync().sync('app', '!local/***', *Git().ls())
+            ssh.cmd(f'app/cli.py -t {target__t} setup --stop {stop} --start {-2 if deploy else start} --git-commit {Git().head_commit()}').env(PYTHONUNBUFFERED=1, **{f'{env_prefix}SYSTEM': system}).say().call(pty=True)
+        break
 
 
 def _write_file(ssh, path, *lines, chmod='644', append=False):
