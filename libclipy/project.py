@@ -159,8 +159,8 @@ class Projects():
     def all(self):
         if not hasattr(self, '_all'):
             try:
-                with local_root.open('projects.json', 'rb') as f:
-                    self._all = {p:Project(p, sync_hashes=s) for p,s in json.load(f).items()}
+                data = json.loads(local_root.path('projects.json').read_text(encoding='utf8'))
+                self._all = {p:Project(p, sync_hashes=s) for p,s in data.items()}
             except Exception:
                 self._all = {}
         return self._all
@@ -184,6 +184,6 @@ class Projects():
 
 
     def save(self):
-        with local_root.open('projects.json', 'w', encoding='utf8') as f:
-            json.dump({str(p):p.sync_hashes for p in self._all.values()}, f, ensure_ascii=False, indent=2)
+        txt = json.dumps({str(p):p.sync_hashes for p in self._all.values()}, ensure_ascii=False, indent=2)
+        local_root.path('projects.json', ensure=True).write_text(txt, encoding='utf8')
     

@@ -318,7 +318,7 @@ class Envoy(SysTool):
 
     def save(self):
         from config import local_root
-        with local_root.open(Envoy.config.v, 'w', encoding='utf8') as f:
+        with local_root.path(Envoy.config.v, ensure=True).open('w', encoding='utf8') as f:
             cfg_obj = json.loads(repr(self.cfg))
             if Envoy.config.v.suffix == '.json':
                 json.dump(cfg_obj, f, indent=4)

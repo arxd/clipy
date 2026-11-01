@@ -103,10 +103,10 @@ class GCloud(SysTool):
     def instance_to_zone(self, name):
         import json
         try:
-            with open(local_root.path(self.instance_cache.v), 'r', encoding='utf8') as f: return json.load(f)[name]
+            return json.loads(local_root.path(self.instance_cache.v).read_text(encoding='utf8'))[name]
         except:
             data = {v['name']:v['zone'].rsplit('/',1)[-1] for v in self.compute('instances', 'list', json=True).call()}
-            with local_root.open(self.instance_cache.v, 'w', encoding='utf8') as f: json.dump(data, f, ensure_ascii=False)
+            local_root.path(self.instance_cache.v, ensure=True).write_text(json.dumps(data, ensure_ascii=False), encoding='utf8')
             if name not in data: raise UsageError(f"Instance {name!r} not found:  {' '.join(data.keys())}")
             return data[name]
 

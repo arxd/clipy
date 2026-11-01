@@ -1,4 +1,5 @@
 import contextvars, os, sys, inspect, importlib
+from contextlib import contextmanager
 from pathlib import Path
 
 UNSET = type('UNSET',tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: False})()
@@ -14,6 +15,7 @@ def set_env_vars(prefix):
             cfg_var = getattr(config, k)
             if isinstance(cfg_var, ConfigVar): cfg_var.v = value
         except AttributeError: pass
+
 
 
 class Target():
@@ -54,8 +56,8 @@ class ConfigVar():
     It stores meta data like documentation and source file location for printing documentation about config variables.
     '''
     preserved = set()
-    preserve = True
-    lock = False
+    preserve = True # Changes made while this is True will be added to the preserved set and sent to sub-commands
+    lock = False # When this is true changes only change the default value.  This is used when running config.py targets (excluding final) so that env-vars and parent-command preserved values take precedence.
 
     @classmethod
     def set_by_name(self, src_path, value):
@@ -176,14 +178,11 @@ format_out = ConfigVar("format_out How should we format our command's output?", 
 out_fd = ConfigVar("out_fd The pipe fd where our output should be sent")
 
 class LocalRoot(ConfigVar):        
-    def path(self, sub_path=''):
+    def path(self, sub_path='', ensure=False):
         from cli import project_root
-        return project_root / self.v / sub_path
-    
-    def open(self, sub_path, mode='r', *args, **kwargs):
-        path = self.path(sub_path)
-        if 'w' in mode or 'a' in mode or 'x' in mode:
-            path.parent.mkdir(parents=True, exist_ok=True)
-        return open(str(path), mode, *args, **kwargs)
+        p = project_root / self.v / sub_path
+        if ensure: p.parent.mkdir(parents=True, exist_ok=True)
+        return p
+
 
 local_root = LocalRoot("local_root A path to a project-specific temporary work directory", default='local', cast=Path)
