@@ -223,6 +223,29 @@ def ssh(name=None, *, port__p=0):
 
 
 
+@Venv('cli::main', req="paramiko")
+@Command()
+def rsync(path_from, path_to, *, name=None, port__p=0):
+    ''' Rsync files to/from the remote instance
+
+    Parameters:
+        <path>
+            The source path (prefix with ':' to pull from remote)
+        <path>
+            The destination path (prefix with ':' to push to remote)
+        --name <name>
+            Open an iap tunnel to this instance.
+            Exclude this if connecting to an already open tunnel with --port.
+        --port -p <port>
+            The localhost port to the open tunnel.
+            Exclude this if giving an instance name.
+    '''
+    gcloud = GCloud(project_id=True)
+    with gcloud.ssh(vm_name=name, port=port__p) as ssh:
+        ssh.iap.rsync().cp(path_from, path_to).say().call()
+
+
+
 @Command()
 def roles(user__u=''):
     ''' Show users/roles

@@ -4,10 +4,16 @@
 Issues
 ========
 
-* The new command's sed handling of config.py is too brittle.  Take into account given features?
-* ./cli.py is showing the full depth of commands
 
-* env passed through dict
+* Be able to specify if you want your @Command to run in the cwd of the project home or the cwd of where the user currently is.
+  You should also be able to easily get either one.  
+  @Command(cwd='project')  Default to 'project'.  Other options:  'call', 'home', 'tmp', 'local'
+
+* Make sure lockfile inf oin core/info.json works correctly on different 'system's.
+  It can only be populated on the remote system, but how do we bring the info.json back to dev so that it can be committed?
+
+* The new command's sed handling of config.py is too brittle.  Take into account given features?
+
 * pyml
 
   * print/log object streaming
@@ -20,7 +26,6 @@ Issues
 
   * consolidate the different test runs into a single coverage report
 
-* Maybe make the initialization code of entry_point more flexable (override-able?)
 * Produce clipy docs from docstrings (liblcipy/docs/docs.py)
 
 

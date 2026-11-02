@@ -81,8 +81,32 @@ class Rsync(SysTool):
             self(*self.args, *cmd, '--filter', f'. {tmp.name}', chdir + ('' if chdir.endswith('/') else '/'), f":{dest}", **kwargs).call()
 
 
-    def copy(self, *args, **kwargs):
+    def merge(self, *args, **kwargs):
         ''' Same as `sync()` but with `delete` set to False
         '''
         kwargs['delete'] = False
         return self.sync(*args, **kwargs)
+
+
+    def cp(self, src, dest, **kwargs):
+        ''' Copy a file or directory to/from a remote location.  Add ':' to the remote location.
+
+        Examples of copying a file:
+            cp('~/file.txt', ':~/remote/place')
+                *NOTE* Two different things happen depending on if `place` is an existing directory or not.
+                If `place` is a directory then `file.txt` is placed inside.
+                Otherwise, `file.txt` is renamed to `place`
+            cp('~/file.txt', ':~/remote/place/')
+                Put `file.txt` inside the `place` directory.
+
+        Examples of copying a directory:
+            cp('a_folder',':remote_dir')
+                Copy folder with files inside.  /home/user/remote_dir/a_folder/...
+            cp('a_folder/',':remote_dir')
+                Rename the folder.  All files in `a_folder` go in /home/user/remote_dir/...
+            cp('./', ':remote_dir')
+                Copies all files in the current directory to /home/user/remote_dir/...
+            
+        '''
+        _resolve = lambda p: p if p[0] == ':' else (str(Path(p).expanduser().resolve()) + '/'*p.endswith('/'))
+        return self(*self.args, _resolve(src), _resolve(dest), **kwargs)
