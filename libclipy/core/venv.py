@@ -102,24 +102,21 @@ class Venv():
         if not self._venv_path.exists():
             python, req, system_packages, _ = self.computed()
             print(f"Create {self!r}")
-            self.uv('venv', '-p', ','.join(python), *('--system-site-packages',)*system_packages, self._venv_path)
+            from libclipy.tools.uv import Uv
+            from libclipy.core.errors import MissingTool
+            try:
+                uv = Uv()
+            except MissingTool as e:
+                import sys
+                from libclipy.core.pretty import print as p
+                p.pretty(e)
+                sys.exit(1)
+            uv.venv('-p', ','.join(python), *('--system-site-packages',)*system_packages, self._venv_path).say().call()
             if 'req' in info['venvs'][hash]:
-                self.uv('pip', 'install', '--python', self._venv_path, '-r', '-', stdin='\n'.join(info['venvs'][hash]['req']))
+                uv.pip('install', '--python', self._venv_path, '-r', '-').say().call(stdin='\n'.join(info['venvs'][hash]['req']))
             else:
-                self.uv('pip', 'install', '--python', self._venv_path, '-r', '-', stdin='\n'.join(req))
-                out = self.uv('pip', 'freeze', '--python', self._venv_path, read=True)
+                uv.pip('install', '--python', self._venv_path, '-r', '-').say().call(stdin='\n'.join(req))
+                out = uv.pip('freeze', '--python', self._venv_path).say().on(0, 'utf8').call()
                 info['venvs'][hash]['req'] = [o.strip() for o in out.split('\n') if o.strip()]
                 with open('libclipy/core/info.json', 'w', encoding='utf8') as f: json.dump(info, f, ensure_ascii=False, indent=4)
         return self._venv_path/path
-
-    
-    def uv(self, *args, read=None, stdin=None):
-        # FIXME: Change to Cmd
-        import subprocess
-        try:
-            proc = subprocess.Popen(['uv']+ list(map(str, args)), stdout=None if read is None else subprocess.PIPE, stderr=subprocess.PIPE, stdin=None if stdin is None else subprocess.PIPE )
-        except OSError:
-            raise ValueError("Install uv and try again: https://docs.astral.sh/uv/getting-started/installation/")
-        stdout, stderr = proc.communicate(input=stdin and stdin.encode('utf8'))
-        if proc.returncode != 0: raise ValueError(stderr.decode('utf-8'))
-        return stdout and stdout.decode()

@@ -175,16 +175,36 @@ class Cmd():
 
 
     def _channels(self, stdout=None, stderr=None, stdin=None, **channels):
-        ''' ``None`` | '' | pass | line | bin | buf | null | stdout
+        ''' Use shortcut string codes to create Channels for stdin/stdout/stderr.
+
+        You can pass a Channel or one of the following simple values for stdout/stderr:
+
+            * ``None`` | '' | 'pass' -> None : Output is not captured
+            * 'null' -> subprocess.DEVNULL : Capture and drop output.
+            * 'line' -> subprocess.PIPE : Capture output and yield utf8 encoded lines (with included trailing newline)
+            * 'bin' -> subprocess.PIPE : Capture output and yield chunks of binary data
+            * 'buf' -> subprocess.PIPE : Capture output into buffer but don't yield anything
+            * 'pickle' -> pipe : Capture output and yield a sequence of unpickled objects
+
+        For stderr you can additionally use:
+
+            * 'stdout' -> subprocess.STDOUT : Redirect stderr to stdout
+
+        For stdin you have these options:
+
+            * None -> No stdin pipe
+            * str | bytes -> Data is sent on the pipe and then the pipe is closed
+            * True -> The pipe is only created.  You can send at your leasure.  Then close the pipe by manually sending ``None``.
+
         '''
         def _build(src, kind):
             if isinstance(kind, Channel): return kind
             kinds = {None:None, 'pass':None, '':None, 'stdout':subprocess.STDOUT, 'null':subprocess.DEVNULL}
-            chan = Channel(src=src, child_fd=kinds.get(kind, subprocess.PIPE))
-            if src == 'stdin' and kind is not None:
+            chan = Channel(src=src, child_fd=kinds.get(kind, subprocess.PIPE)) # Yes, child_fd has the overloaded job of carrying the popen arg value.  subprocess.PIPE will get replaced with a manually created pipe (below)
+            if src == 'stdin' and kind is not None and kind is not False:
                 chan = Write(src=src)
                 chan.child_fd, chan.fd = os.pipe()
-                if isinstance(kind, (str, bytes)):
+                if kind is not True:
                     chan.send(kind)
                     chan.send(None)
             if src != 'stdin' and chan.child_fd is subprocess.PIPE:
@@ -212,7 +232,7 @@ class Cmd():
     
 
     def on(self, condition, fmt='', value=None):
-        ''' If the given condition matches the return value then the `fmt` rule will be applied.  See: call()
+        ''' If the given condition matches the command's return value then the `fmt` rule will be applied.  See: call()
         '''
         if self._conditions is None: self._conditions = _Conditions()
         self._conditions.parse(condition, fmt, value)
@@ -220,7 +240,7 @@ class Cmd():
     
 
     def call(self, fmt=None, value=None, *, stdin=None, **kwargs):
-        ''' This executes the command and supplies default case if none of the other cases match.
+        ''' This executes the command and supplies the default case if none of the previously configured (via on()) cases match.
 
         Parameters:
             fmt :str = "stdout,stdin,action"
@@ -288,14 +308,14 @@ class Cmd():
 
 
     def iter_sync(self, *, kill=signal.SIGTERM, **channels):
-        ''' Start the subprocess in a synchronous mode with `channels` connected
+        ''' Start the subprocess in a synchronous mode with `channels` connected.  See _channels()
         '''
         from .iter_sync import SyncIterator
         return SyncIterator(cmd=self, kill=kill, channels=self._channels(**channels))
 
 
     def iter_async(self, *, kill=signal.SIGTERM, **channels):
-        ''' Start the subprocess in an asynchronous mode with `channels` connected
+        ''' Start the subprocess in an asynchronous mode with `channels` connected.  See _channels()
         '''
         from .iter_async import AsyncIterator
         return AsyncIterator(cmd=self, kill=kill, channels=self._channels(**channels))

@@ -61,7 +61,7 @@ class Project():
         clipy = Project()
         if feature == 'core':
             yield from ['cli.py', 'libclipy/__init__.py', ]
-            yield from [f"libclipy/tools/{f}" for f in ['__init__.py', 'sys_tool.py', 'git.py']]
+            yield from [f"libclipy/tools/{f}" for f in ['__init__.py', 'sys_tool.py', 'git.py', 'uv.py']]
             def _exclude(f):
                 if f.name.startswith('_test'): return True
                 if f.name == 'info.json': return True

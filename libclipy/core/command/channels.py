@@ -36,6 +36,10 @@ class Channel():
         self.b1 += size
 
 
+    def have_data(self):
+        return self.b0 != self.b1
+    
+
     @property
     def data(self):
         return self._view[self.b0:self.b1].tobytes()
@@ -120,6 +124,7 @@ class ReadGen(Read):
 
 class ReadView(ReadGen):
     ''' Like ReadBin but returns a memory view of the buffer so you have to be more careful
+    FIXME: Implement?
     '''
 
 
@@ -190,20 +195,38 @@ class ReadPickle(ReadGen):
 
 
 class Write(Channel):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.have_data_to_send = lambda: None
+
   
     def send(self, data):
         if data is None:
             self.done = True
-        elif self.done: raise ValueError(f"Writing data to closed pipe: {data!r}")
+            return
+        if self.done: raise ValueError(f"Writing data to closed pipe: {data!r}")
         if isinstance(data, str): data = data.encode('utf8')
-        self.data += data
+        if not isinstance(data, (bytes, bytearray)): raise ValueError(f"Can't send invalid data: {data!r}")
+        if data and not self.have_data(): self.have_data_to_send()
+        self.extend_data(data)
 
 
-    def write(self):
-        if not self.data: return
+    def write_some_data(self):
+        assert(self.have_data()) # DELETEME this was more a curiosity than a requirment
         try:
-            self.data = self.data[os.write(self.fd, self.data):]  # FIXME: The subprocess might have closed while we still are trying t osend stuff
-        except BlockingIOError: 
+            count = os.write(self.fd, self.data)
+            self.b0 += count
+            # FIXME: The subprocess might have closed while we still are trying to send stuff
+        except BlockingIOError:
             pass
+        if not self.have_data():
+            if self.done: return False
+            self.no_data_to_send()
+        return True
 
-    # def close()  FIXME Think about how close interacts with send(None)
+
+    # We interpret self.done differently than Channel does.
+    def close(self):
+        if self.fd is not None: os.close(self.fd)
+        self.fd = None

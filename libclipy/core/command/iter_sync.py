@@ -13,7 +13,7 @@ class SyncIterator():
         self.popen_args = {'env': cmd.environ, 'pass_fds': []}
         for chan in channels.values():
             if chan.src in ('stdin', 'stdout', 'stderr'):
-                self.popen_args[chan.src] = chan.child_fd
+                self.popen_args[chan.src] = chan.child_fd # Yes, child_fd has the overloaded job of carrying the popen arg value.  Pipes are handled manually so it will never be subprocess.PIPE
             else:
                 self.popen_args['pass_fds'].append(chan.child_fd)
 
@@ -38,9 +38,14 @@ class SyncIterator():
         self.sel = selectors.DefaultSelector()
     # Register necessary the channels
         for chan in self.channels.values():
-            if not (mask := selectors.EVENT_WRITE*isinstance(chan, Write) | selectors.EVENT_READ*isinstance(chan, Read)): continue
+            if not isinstance(chan, (Read, Write)): continue
             os.set_blocking(chan.fd, False)
-            self.sel.register(chan.fd, mask, chan)
+            if isinstance(chan, Read):
+                self.sel.register(chan.fd, selectors.EVENT_READ, chan)
+            else:
+                chan.have_data_to_send = lambda: self.sel.register(chan.fd, selectors.EVENT_WRITE, chan)
+                chan.no_data_to_send = lambda: self.sel.unregister(chan.fd)
+                if chan.have_data(): chan.have_data_to_send()
     # Find channels returning data
         self._read_gen = [c for c in self.channels.values() if isinstance(c, ReadGen)]
         self._events = None
@@ -92,7 +97,7 @@ class SyncIterator():
             raise StopIteration()
     # Make sure we have an iterator for the selector events
         if self._events is None:
-            if not self.sel.get_map(): # No more events. Just keep parsing our data.
+            if not self.sel.get_map(): # No more events. Just keep parsing the data we have received.
                 self.done = True 
                 return _NULL
             self._events = iter(self.sel.select())
@@ -104,13 +109,11 @@ class SyncIterator():
             self._events = None
             return _NULL
     # Can we write anything?
-        if mask & selectors.EVENT_WRITE:
-            raise NotImplementedError() # Need to register / unregister as writable data is available or not        
-    # Can we read data?
-        if mask & selectors.EVENT_READ:
-            if not chan.read_some_data():
-                self.sel.unregister(chan.fd)
-                chan.close()
+        for fn in [mask&selectors.EVENT_WRITE and chan.write_some_data, mask&selectors.EVENT_READ and chan.read_some_data]:
+            if not fn or fn(): continue
+        # This channel is done so unregister and close it
+            self.sel.unregister(chan.fd)
+            chan.close()
         return _NULL
 
 
