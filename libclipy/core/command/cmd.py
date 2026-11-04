@@ -256,7 +256,7 @@ class Cmd():
                 The action tells you what to return in addition to what you kept from stdin/stdout.
 
                 * ''      : Return only what was kept from stdout, stderr
-                * 'raise' : Raise a `CmdError` with you kept, the returncode, and the `value` you supplied as the msg.
+                * 'raise' : Raise a `CmdError` containing what you kept, the returncode, and the `value` you supplied as the msg.
                 * 'code'  : Return the returncode
                 * 'value' : Return the `value` you supplied
 

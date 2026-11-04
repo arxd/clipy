@@ -116,7 +116,7 @@ class Venv():
                 uv.pip('install', '--python', self._venv_path, '-r', '-').say().call(stdin='\n'.join(info['venvs'][hash]['req']))
             else:
                 uv.pip('install', '--python', self._venv_path, '-r', '-').say().call(stdin='\n'.join(req))
-                out = uv.pip('freeze', '--python', self._venv_path).say().on(0, 'utf8').call()
+                out = uv.pip('freeze', '--python', self._venv_path).say().call(0, 'utf8')
                 info['venvs'][hash]['req'] = [o.strip() for o in out.split('\n') if o.strip()]
                 with open('libclipy/core/info.json', 'w', encoding='utf8') as f: json.dump(info, f, ensure_ascii=False, indent=4)
         return self._venv_path/path

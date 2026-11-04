@@ -80,7 +80,23 @@ def spawn(name, *, machine__m='e2-micro', image__i='debian-cloud/debian-13', zon
 
 
 @Command()
-async def infrastructure(*kinds, init=False):
+async def init_infrastructure(gcloud):
+    ''' This only needs to be called once to initialize a new GCP project
+    '''
+    gcloud = GCloud(project_id=True)
+    gcloud.services('enable', 'compute.googleapis.com', 'storage.googleapis.com', 'iap.googleapis.com').say().call()
+    gcloud.compute('networks', 'create', 'default', '--subnet-mode=custom', '--bgp-routing-mode=global').say().call()
+    for i, region in enumerate([gcloud.region, 'us-central1']):
+        gcloud.compute('networks', 'subnets', 'create', region, '--network=default','--region', region, f'--range=10.0.{i+1}.0/24').call()
+        gcloud.compute('routers', 'create', region, '--network=default', '--region', region).say().call()
+        gcloud.compute('routers', 'nats', 'create', region, f'--router={region}','--region', region, '--auto-allocate-nat-external-ips', '--nat-all-subnet-ip-ranges', '--auto-network-tier=PREMIUM').say().call()
+    gcloud.compute('firewall-rules', 'create', 'allow-iap-ssh', '--network=default', '--direction=INGRESS','--action=ALLOW', '--rules=tcp:22', '--source-ranges=35.235.240.0/20').say().call()
+    gcloud.compute('firewall-rules', 'create', 'allow-internal-cross-region', '--network=default', '--direction=INGRESS', '--action=ALLOW', '--rules=all', '--source-ranges=10.0.1.0/24,10.0.2.0/24').say().call()
+
+
+
+@Command()
+async def infrastructure(*kinds):
     ''' Show / intialize infrastructure
     
     Parameters:
@@ -89,20 +105,8 @@ async def infrastructure(*kinds, init=False):
                 networks networks_subnets security-policies addresses firewall-rules
                 routers ssl-certificates network-endpoint-groups forwarding-rules url-maps
                 target-http-proxies target-https-proxies backend-services health-checks routers instances
-        --init
-            Initialize basic infrastructure
     '''
     gcloud = GCloud(project_id=True)
-    if init:
-        gcloud.services('enable', 'compute.googleapis.com', 'storage.googleapis.com', 'iap.googleapis.com').say().call()
-        gcloud.compute('networks', 'create', 'default', '--subnet-mode=custom', '--bgp-routing-mode=global').say().call()
-        for i, region in enumerate([gcloud.region, 'us-central1']):
-            gcloud.compute('networks', 'subnets', 'create', region, '--network=default','--region', region, f'--range=10.0.{i+1}.0/24').call()
-            gcloud.compute('routers', 'create', region, '--network=default', '--region', region).say().call()
-            gcloud.compute('routers', 'nats', 'create', region, f'--router={region}','--region', region, '--auto-allocate-nat-external-ips', '--nat-all-subnet-ip-ranges', '--auto-network-tier=PREMIUM').say().call()
-        gcloud.compute('firewall-rules', 'create', 'allow-iap-ssh', '--network=default', '--direction=INGRESS','--action=ALLOW', '--rules=tcp:22', '--source-ranges=35.235.240.0/20').say().call()
-        gcloud.compute('firewall-rules', 'create', 'allow-internal-cross-region', '--network=default', '--direction=INGRESS', '--action=ALLOW', '--rules=all', '--source-ranges=10.0.1.0/24,10.0.2.0/24').say().call()
-        return
     i = {}
     req_services = {'cloudapis.googleapis.com','storage.googleapis.com','monitoring.googleapis.com','serviceusage.googleapis.com','cloudresourcemanager.googleapis.com','servicemanagement.googleapis.com','cloudtrace.googleapis.com', 'bigquery.googleapis.com', 'storage-component.googleapis.com', 'datastore.googleapis.com', 'sql-component.googleapis.com', 'logging.googleapis.com','storage-api.googleapis.com'}
     if not kinds or 'services' in kinds:

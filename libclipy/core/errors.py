@@ -19,7 +19,7 @@ class PrettyException(Exception):
     
     def __pretty__(self, p):
         if not hasattr(self, 'msg'): return
-        p.ln(str(self))
+        p(str(self))
         p.pretty({k:v for k,v in self.__dict__.items() if k != 'msg'})
 
 

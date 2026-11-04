@@ -212,7 +212,7 @@ class SSHCmd(Cmd):
     def iter_sync(self, **kwargs):
         raise NotImplementedError("Not usable in an SSH Cmd")
     
-    def iter_aync(self, **kwargs):
+    def iter_async(self, **kwargs):
         raise NotImplementedError("Not usable in an SSH Cmd")
 
 
