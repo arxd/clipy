@@ -21,7 +21,8 @@
         "cli.workflow",
         "cli.lifecycle",
         "cli.gcp",
-        "cli.web"
+        "cli.web",
+        "cli.config"
     ],
     "venvs": {
         "251b9a698f6e478b8abd62cf71e6ff7f59023969": {

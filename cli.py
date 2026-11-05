@@ -20,7 +20,7 @@ from libclipy.core.venv import Venv
 from libclipy.core.command.cmd import Cmd
 
 @Venv(python="3.9", req='wcwidth')
-@Command('libclipy.cli_install', 'libclipy.cli_lifecycle', 'libclipy.tools.nvm::nvm', 'libclipy.cli_gcp::gcp', 'libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.cli_docs::docs', 'libclipy.cli_testing', sub_required=False)
+@Command('libclipy.cli_install', 'libclipy.cli_config', 'libclipy.cli_lifecycle', 'libclipy.tools.nvm::nvm', 'libclipy.cli_gcp::gcp', 'libclipy.cli_project', 'libclipy.cli_web', 'libclipy.cli_grep', 'libclipy.cli_workflow', 'libclipy.cli_docs::docs', 'libclipy.cli_testing', sub_required=False)
 def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=False, format__f=None):
     ''' The universal command line interface for all functionality contained in this project.
 

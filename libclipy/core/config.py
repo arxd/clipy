@@ -60,10 +60,21 @@ class ConfigVar():
 
     @classmethod
     def set_by_name(self, src_path, value):
-        module, names = src_path.split('::')
-        obj = importlib.import_module(module)
-        for name in names.split('.'): obj = getattr(obj, name)
-        obj.v = value
+        self.get_by_name(src_path).v = value
+
+
+    @classmethod
+    def get_by_name(self, src_path):
+        ''' full.module.path::Full.name '''
+        if '::' in src_path:
+            module, names = src_path.split('::')
+            obj = importlib.import_module(module)
+            for name in names.split('.'): obj = getattr(obj, name)
+        else:
+            import config
+            obj = getattr(config, src_path)
+        if not isinstance(obj, ConfigVar): raise AttributeError(f"Invalid ConfigVar path: {src_path}")
+        return obj
 
 
     def __init__(self, name='', *, loc=1, cast=None, default=UNSET, export=None):
