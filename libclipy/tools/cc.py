@@ -1,7 +1,7 @@
 import re
 from collections import namedtuple
 from pathlib import Path
-from cli import Cmd, ConfigVar, CLR
+from cli import Cmd, ConfigVar, CLR, project_root
 from .sys_tool import SysTool, MissingTool
 
 
@@ -61,7 +61,7 @@ class CC(SysTool):
         for line in lines[:-1]:
             if line.startswith('.') and not dep_done:
                 try:
-                    dep.append(Path(line.split(' ',1)[1]).relative_to(Path('.')))
+                    dep.append(Path(line.split(' ',1)[1]).relative_to(Path(project_root)))
                 except ValueError:
                     pass
                 continue

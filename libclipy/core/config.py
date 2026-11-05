@@ -1,7 +1,18 @@
-import contextvars, os, sys, inspect, importlib
+import contextvars, os, sys, inspect, importlib, traceback, pickle
 from pathlib import Path
 
-UNSET = type('UNSET',tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: False})()
+UNSET = type('UNSET', tuple(),{'__repr__':lambda _: '-', '__bool__':lambda _: False, '__reduce__':lambda _:'UNSET'})()
+
+
+def config_for_target(target, *var_paths):
+    ''' Call ``./cli.py -t target config *var_paths`` and return the dictionary of config values for that target
+    '''
+    from cli import Cmd, project_root
+    all = Cmd(sys.executable, project_root/'cli.py', '-t', target, '-f', 'bin', 'config', *var_paths).call('pickle')[0]
+    if not var_paths: return all
+    all = tuple(all[k] for k in var_paths)
+    return all[0] if len(all) == 1 else all
+
 
 
 def set_env_vars(prefix):
@@ -182,12 +193,95 @@ def target(v='local'):
     '''
     return v.split('.') if isinstance(v, str) else v
 
+
+class Output(ConfigVar):
+    format_codes = ('str', 'pretty', 'json', 'base64', 'bin')
+
+    @classmethod
+    def cast(self, v):
+        if not isinstance(v, int) and v not in Output.format_codes:
+            from .errors import UsageError
+            from .pretty import CLR
+            raise UsageError(f"Invalid output format code: {CLR.r}{v}{CLR.x}\nMust be one of: {CLR.y}{' '.join(Output.format_codes)}{CLR.x}")
+        return v
+
+    def __call__(self, value):
+        code = self.v
+        if isinstance(code, int):
+            with open(code, 'wb', closefd=False) as f:
+                self.send_bin(value, f)
+        elif isinstance(value, BaseException):
+            self.exception(value)
+        else:
+            getattr(self, f'send_{code}')(value)
+
+
+    def close(self):
+        if isinstance(fd:=self.v, int): os.close(fd)
+
+
+    def exception(self, value):
+        if self.v == 'pretty': return self.send_pretty(value)
+        if isinstance(value, KeyboardInterrupt):
+            sys.stderr.write('ctrl-c\n')
+        elif hasattr(value, 'traceback_text'):
+            sys.stderr.write('\n'.join(value.traceback_text))
+        else:
+            import traceback
+            sys.stderr.write('\n'.join(traceback.format_exception(type(value), value, value.__traceback__)))
+
+
+    def send_str(self, value):
+        sys.stdout.write(str(value) + '\n')
+
+
+    def send_pretty(self, value):
+        from .pretty import print
+        if value is not None: print.pretty(value)
+
+
+    def send_json(self, value):
+        import json
+        return self.send_str(json.dumps(value))
+
+
+    def send_base64(self, value):
+        import base64
+        return self.send_str(base64.b64encode(self._pickle(value)).decode('ascii'))
+
+        
+    def send_bin(self, value, stream=None):
+        from .command.channels import PICKLE_HDR
+        if stream is None: stream = sys.stdout.buffer
+        data = self._pickle(value)
+        try:
+            stream.write(PICKLE_HDR.pack(len(data)))
+            stream.write(data)
+            # `out` is a 128KB BufferedWriter, so without this nothing reaches our parent until we exit,
+            # which would defeat the point of Command.each_async() yielding values as they arrive.
+            stream.flush()
+        except BrokenPipeError:
+            pass
+
+    
+    def _pickle(self, value):
+        if hasattr(value, '__traceback__'):
+            if not hasattr(value, 'traceback_text'):
+                value.traceback_text = traceback.format_exception(type(value), value, value.__traceback__)
+            value.__traceback__ = None
+            value.__context__ = None
+            value.__cause__ = None
+        return pickle.dumps(value, protocol=5)
+
+
+
+output = Output("output How should we format the command's output?", default='pretty', cast=Output.cast)
+    
+
 verbosity = ConfigVar("verbosity Bump the verbosity positive or negative", default=0, cast=int)
 system = ConfigVar('system The system environment where we are running cli.py', default='dev')
-format_out = ConfigVar("format_out How should we format our command's output?", default='pretty')
-out_fd = ConfigVar("out_fd The pipe fd where our output should be sent")
 
-class LocalRoot(ConfigVar):        
+class LocalRoot(ConfigVar):
     def path(self, sub_path='', ensure=False):
         from cli import project_root
         p = project_root / self.v / sub_path
@@ -195,4 +289,4 @@ class LocalRoot(ConfigVar):
         return p
 
 
-local_root = LocalRoot("local_root A path to a project-specific temporary work directory", default='local', cast=Path)
+local_root = LocalRoot("local_root A path to a project-specific temporary work directory.  A relative path will be resolved relative to project_root", default='local', cast=Path)

@@ -140,7 +140,7 @@ def test_break_cleans_up_before_the_next_statement(tmp_path):
     closes the iterator.  All of it before the assert below runs -- not at gc time, not at exit.
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
-    for line in cmd.each(stdout='line', kill=signal.SIGINT):
+    for line in cmd.each(stdout='lines', kill=signal.SIGINT):
         break
     assert(line == 'line 0\n')
     child = int(pidfile.read_text())
@@ -154,7 +154,7 @@ def test_exception_in_loop_body_cleans_up(tmp_path):
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
     with pytest.raises(RuntimeError):
-        for line in cmd.each(stdout='line', kill=signal.SIGINT):
+        for line in cmd.each(stdout='lines', kill=signal.SIGINT):
             raise RuntimeError('boom')
     child = int(pidfile.read_text())
     assert(marker.read_text() == 'cleaned up')
@@ -164,10 +164,10 @@ def test_exception_in_loop_body_cleans_up(tmp_path):
 def test_break_closes_our_fds(tmp_path):
     ''' Breaking must not leak the read end of the pipe we handed the child '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
-    for line in cmd.each(stdout='line'): break # Warm up, so one-time allocations are not a leak
+    for line in cmd.each(stdout='lines'): break # Warm up, so one-time allocations are not a leak
     before = _open_fd_count()
     for _ in range(3):
-        for line in cmd.each(stdout='line'): break
+        for line in cmd.each(stdout='lines'): break
     assert(_open_fd_count() == before)
 
 
@@ -178,9 +178,9 @@ def test_break_closes_our_fds(tmp_path):
 def test_exhaustion_closes_everything(tmp_path):
     ''' Running the iterator dry reaps the child and closes our fds '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_QUIET, 'quiet')
-    assert([l.rstrip('\n') for l in cmd.each(stdout='line')] == ['line 0', 'line 1', 'line 2'])
+    assert([l.rstrip('\n') for l in cmd.each(stdout='lines')] == ['line 0', 'line 1', 'line 2'])
     before = _open_fd_count()
-    assert([l.rstrip('\n') for l in cmd.each(stdout='line')] == ['line 0', 'line 1', 'line 2'])
+    assert([l.rstrip('\n') for l in cmd.each(stdout='lines')] == ['line 0', 'line 1', 'line 2'])
     assert(_open_fd_count() == before)
 
 
@@ -201,7 +201,7 @@ def test_named_local_held_by_traceback_defers_cleanup(tmp_path):
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
     def consumer():
-        gen = cmd.each(stdout='line', kill=signal.SIGINT) # A named local, not a loop temp
+        gen = cmd.each(stdout='lines', kill=signal.SIGINT) # A named local, not a loop temp
         for line in gen:
             raise RuntimeError('boom')
     saved = None
@@ -224,7 +224,7 @@ def test_reference_cycle_defers_cleanup_to_gc(tmp_path):
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
     gc.disable()
     try:
-        gen = cmd.each(stdout='line', kill=signal.SIGINT)
+        gen = cmd.each(stdout='lines', kill=signal.SIGINT)
         next(gen)
         cycle = [gen]
         cycle.append(cycle)
@@ -257,7 +257,7 @@ import sys, gc, signal
 sys.path.insert(0, {str(project_root)!r})
 from libclipy.core.command.cmd import Cmd
 def consumer():
-    gen = Cmd(sys.executable, {str(child_py)!r}, {str(marker)!r}, {str(pidfile)!r}).each(stdout='line', kill=signal.SIGINT)
+    gen = Cmd(sys.executable, {str(child_py)!r}, {str(marker)!r}, {str(pidfile)!r}).each(stdout='lines', kill=signal.SIGINT)
     for line in gen:
         raise RuntimeError('boom')
 try:
@@ -293,7 +293,7 @@ def test_close_does_not_deadlock_on_a_chatty_child(tmp_path):
     one `break` reaches.
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_CHATTY, 'chatty')
-    gen = cmd.each(stdout='line', kill=signal.SIGINT)
+    gen = cmd.each(stdout='lines', kill=signal.SIGINT)
     assert(next(gen) == 'ready\n')
     child = int(pidfile.read_text())
     with _deadline(2, 'close() blocked: it waits on the child while still holding the read end of its stdout'):

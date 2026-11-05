@@ -26,7 +26,9 @@ if __name__ == '__main__':
 
 
 
-from cli import Command, Cmd, Venv, project_root
+from cli import Command, ConfigVar, Cmd, Venv, project_root
+
+test_dirs = ConfigVar('test_dirs A list of directories under which you will find _test_x.py files.')
 
 @Venv('cli::main', req='pytest coverage pytest-asyncio pytest-timeout')
 @Command()
@@ -44,8 +46,8 @@ def test(spec=None, /, *, coverage__c=False, keep_going__k=False):
     '''
     from functools import reduce
     from libclipy.core.config import verbosity
-    args = [['libclipy']]
-    args += reduce(lambda a,b:a+b, [['--ignore', x] for x in os.listdir('.') if os.path.isdir(x) and x not in args[0]])
+    args = [[str(project_root/d) for d in test_dirs.v]]
+    args += reduce(lambda a,b:a+b, [['--ignore', str(x)] for x in project_root.iterdir() if x.is_dir() and str(x) not in args[0]])
     pytest_ini = dict(
         asyncio_mode = 'strict', # auto
         timeout = 5,
@@ -61,7 +63,7 @@ def test(spec=None, /, *, coverage__c=False, keep_going__k=False):
     args.append('--import-mode=importlib')
     if spec: args.append(spec)
 # run pytest.main in a separate process (Because it needs it's own event loop and a clean module load)
-    Cmd(sys.executable, '-I', 'libclipy/cli_testing.py', project_root, json.dumps(args)).on(0).call(',,raise')
+    Cmd(sys.executable, '-I', project_root/'libclipy'/'cli_testing.py', project_root, json.dumps(args)).on(0).call(',,raise')
     if coverage__c:
         url = 'local/coverage/index.html'
         Cmd('open', '-a', 'Google Chrome', url).call(',,raise')

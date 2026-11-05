@@ -158,7 +158,7 @@ async def images(image=None, *, status__s=None, create__c=None, family__f=None):
         if status == 'RUNNING':
             if input(f"Stop the instance? [y/N]") != 'y': raise UsageError("Aborting")
             gcloud.compute('instances', 'stop', create__c, '--zone', zone).say().call()
-            status=gcloud.compute('instances', 'describe', create__c, '--zone', zone, '--format=value(status)').call('utf8').strip()
+            status = gcloud.compute('instances', 'describe', create__c, '--zone', zone, '--format=value(status)').call('utf8').strip()
         if status != 'TERMINATED': raise UsageError(f"The instance is not in a valid TERMINATED state: {status!r}")
         print(f"Creating the image: {image!r}")
         return gcloud.compute('images', 'create', image, *('--family', family__f)*bool(family__f), '--source-disk', source_disk).say().call()

@@ -5,7 +5,7 @@ from pathlib import Path
 class Venv():
     ''' This represents a desired virtual environment for a command.
     '''
-    root = ConfigVar('Venv.root The path where the python virtual environments will be kept', default='.python', cast=Path)
+    root = ConfigVar('Venv.root The path where the python virtual environments will be kept.  A relative path will be relative to local_root.', default='.python', cast=Path)
 
     @classmethod
     def all(self, *patterns):
@@ -94,11 +94,14 @@ class Venv():
         try: return self._venv_path/path
         except AttributeError: pass 
         import json, random
-        with open('libclipy/core/info.json', 'r', encoding='utf8') as f: info = json.load(f)
+        from cli import project_root
+        from config import local_root
+        info_path = project_root/'libclipy'/'core'/'info.json'
+        info = json.loads(info_path.read_text(encoding='utf8'))
         hash = self.hash(system)
         if hash not in info['venvs']:
             info['venvs'][hash] = {'folder':random.randbytes(16).hex()}
-        self._venv_path = (Venv.root.v / info['venvs'][hash]['folder']).expanduser()
+        self._venv_path = local_root.path(Venv.root.v.expanduser() / info['venvs'][hash]['folder'])
         if not self._venv_path.exists():
             python, req, system_packages, _ = self.computed()
             print(f"Create {self!r}")
@@ -116,7 +119,7 @@ class Venv():
                 uv.pip('install', '--python', self._venv_path, '-r', '-').say().call(stdin='\n'.join(info['venvs'][hash]['req']))
             else:
                 uv.pip('install', '--python', self._venv_path, '-r', '-').say().call(stdin='\n'.join(req))
-                out = uv.pip('freeze', '--python', self._venv_path).say().call(0, 'utf8')
+                out = uv.pip('freeze', '--python', self._venv_path).say().call('utf8')
                 info['venvs'][hash]['req'] = [o.strip() for o in out.split('\n') if o.strip()]
-                with open('libclipy/core/info.json', 'w', encoding='utf8') as f: json.dump(info, f, ensure_ascii=False, indent=4)
+                info_path.write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding='utf8')
         return self._venv_path/path

@@ -60,7 +60,7 @@ class GCloud(SysTool):
         profile_path = local_root.path('gcloud_profiles.json')
         try:
             account = self.config('get-value', 'account').call('utf8').strip()
-            profiles = json.loads(profile_path.read_text())
+            profiles = json.loads(profile_path.read_text(encoding='utf8'))
             return profiles[account]
         except CmdError: raise
         except:

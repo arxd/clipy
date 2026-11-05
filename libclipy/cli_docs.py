@@ -1,13 +1,10 @@
 import os, sys, shutil
 from pathlib import Path
-from cli import Cmd, Command, Venv, UsageError
+from cli import Cmd, Command, Venv, UsageError, project_root
 from libclipy.core.errors import CmdError
 from libclipy.tools.git import Git
 
 # FIXME: Clean up this whole file
-
-DIST = Path('docs/_dist')
-
 
 @Command('.cli_docs')
 def docs():
@@ -28,7 +25,7 @@ def view(section__s='', *, local__l=False):
     ensure_docs()
     if not local__l:
         try:
-            Git(repo=DIST).pull('--rebase').call()
+            Git(repo=project_root/'docs'/'_dist' ).pull('--rebase').call()
         except:
             print(f"Couldn't pull remote documentation.  Using local docs")
     section = find_section(section__s)
@@ -38,7 +35,7 @@ def view(section__s='', *, local__l=False):
         #section = find_section(section__s)
         #assert(section), f"No documentation available to view.  You need to build it:\n  $ ./cli.py docs build"
     url = f"file://{section.absolute()}"
-    print(f'Opening documentation in the browser~lang ja~ブラウザでドキュメントを開く', '...', ['']*2, url)
+    print(f'Opening documentation in the browser: {url}')
     try:
         Cmd('open', '-a', 'Google Chrome', url).call(',,raise')
         Cmd('open', '-a', 'Safari', url).call(',,raise')
@@ -56,17 +53,18 @@ async def build(*, html=False):
         --html
             Build html only
     '''
-    from cli import name, version, project_root
+    from cli import name, version
+    dist = project_root/'docs'/'_dist'
     ensure_docs()
-    shutil.rmtree('docs/gen', ignore_errors=True)
-    shutil.rmtree(DIST/'html', ignore_errors=True)
-    shutil.rmtree(DIST/'markdown', ignore_errors=True)
+    shutil.rmtree(project_root/'docs'/'gen', ignore_errors=True)
+    shutil.rmtree(dist/'html', ignore_errors=True)
+    shutil.rmtree(dist/'markdown', ignore_errors=True)
     #cli_gen('docs/gen/cli')
     sphinx = Cmd(build.bin_path/'sphinx-build', '-a', '-c', 'docs')
     sphinx.env(PYTHONDONTWRITEBYTECODE='x', VERSION=version, SERVICE_NAME=name, CLIPY_ROOT=project_root)
     import asyncio
-    coro = [sphinx('-b', 'html', '.', DIST/'html').call_async()]
-    if not html: coro.append(sphinx('-b', 'markdown', '.', DIST/'markdown').call_async())
+    coro = [sphinx('-b', 'html', project_root, dist/'html').call_async()]
+    if not html: coro.append(sphinx('-b', 'markdown', project_root, dist/'markdown').call_async())
     await Cmd.all(*coro)
 
 
@@ -75,7 +73,7 @@ async def build(*, html=False):
 def push():
     ''' Overwrite the remote documentation with the current built documentation.
     '''
-    repo = Git(repo=DIST)
+    repo = Git(repo=project_root/'docs'/'_dist')
     repo.add('-A').say().call()
     repo.commit('--amend', '-m', 'cli.py docs').say().call()
     repo.push('--force').say().call()
@@ -83,7 +81,7 @@ def push():
     
 
 def find_section(section):
-    docs = DIST/'html'
+    docs = project_root/'docs'/'_dist'/'html'
     options = set()
     for base, dirs, files in os.walk(docs):
         for f in files:
@@ -99,16 +97,17 @@ def find_section(section):
 def ensure_docs():
     ''' Make sure the basic documentation structure is in place
     '''
-    if DIST.is_dir(): return
+    dist = project_root/'docs'/'_dist'
+    if dist.is_dir(): return
 # Find remote docs branch or create a new orphan branch
     repo = Git()
     try:
-        repo.worktree('add', DIST, 'docs', '-f').say().call()
+        repo.worktree('add', dist, 'docs', '-f').say().call()
     except:
         print(f"Creating docs branch")
         gitignore = '* !/html/ !/html/** !/markdown/ !/markdown/** !.gitignore'.split(' ')
         repo.create_orphan_branch('docs', gitignore, remote='origin').say().call()
-        repo.worktree('add', DIST, 'docs').say().call()
+        repo.worktree('add', dist, 'docs').say().call()
     
 
 '''

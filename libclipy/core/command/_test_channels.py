@@ -17,7 +17,7 @@ back values spins that while-loop forever, and makes next_step's StopIteration u
 a parser that no more bytes are coming, so an unterminated trailing record can be released.
 '''
 import time, pytest
-from .channels import Read, ReadLine, _NULL
+from .channels import Read, ReadLines, _NULL
 
 
 def _drain(chan, limit=20):
@@ -34,7 +34,7 @@ def _drain(chan, limit=20):
 
 def _line(data=b'', **kwargs):
     buffer = bytearray(data)
-    return ReadLine(src='stdout', buffer=buffer, _view=memoryview(buffer), b0=0, b1=len(data), **kwargs)
+    return ReadLines(src='stdout', buffer=buffer, _view=memoryview(buffer), b0=0, b1=len(data), **kwargs)
 
 
 # =========================
@@ -183,7 +183,7 @@ def test_a_partial_record_survives_buffer_recycling():
     '''
     lines = [f"line {i}\n" for i in range(2000)]
     blob = ''.join(lines).encode()
-    chan, out = ReadLine(src='stdout'), []
+    chan, out = ReadLines(src='stdout'), []
     for i in range(0, len(blob), 7): # 7 bytes at a time: never aligned with the lines
         chan.extend_data(blob[i:i+7])
         while (v:=chan.parse()) is not _NULL: out.append(v)

@@ -4,7 +4,7 @@ cli.py
 
 This is an inline-library of useful tooling solutions to give any project a nice CLI.
 
-*FIXME*: support win32
+*TODO*: support win32
 
 This project serves two primary purposes.
 
@@ -32,7 +32,7 @@ This project serves two primary purposes.
    - vault:  Keeping secrets in the project secret.
    
 A project is a meta-program that may produce other program executables, or even produce a whole network of connected services.
-The meta-program is a single command-line-interface (CLI) to all of the functionality exposed by the project.
+The meta-program has a single command-line-interface (CLI) for all of the functionality exposed by the project.
 Everything the project is capable of doing is managed/orchestrated through this sole CLI.
 
 This project is a project based on the cli.py concept, so it is a good demonstration of itself.
@@ -61,14 +61,17 @@ You can read the `markdown documentation <../../blob/docs/markdown/README.md>`__
 Rational
 ===========
 
-There are lots of CLI script front-end programs like ``make``, ``npm/yarn``, ``uv``, etc. that can run custom tooling-related scripts.  Each framework/language has their own pet program.
+There are lots of CLI script front-end programs that can run custom tooling-related scripts.  Each framework/language has their own pet program.
 
-They all are inadequate for mostly the same reason.  They are an opaque library/binary that tries to be as universal as possible while simultaneously not providing an adequate API.  So they do more, and less than you want, and you can't change the implementation.
+They all are inadequate for mostly the same reasons.
+They are an opaque library/binary that tries to be as universal as possible while simultaneously not providing an adequate API.
+So they do more, and less than you want, and you can't change the implementation.
 
-clipy, on the other hand, is not an external library.  It lies somewhere between boilerplate code and library code.
+On the other hand, clipy is not an external library.  It lies somewhere between boilerplate code and library code.
 This project bootstraps new clipy-based projects by copying in boilerplate and library clipy code.
 That code is then owned, and can be freely edited/adapted, by the new project.
 
+The two diverged code-bases can be re-synced similar to upgrading a library dependency.
 
 Adding a Tool
 ===============

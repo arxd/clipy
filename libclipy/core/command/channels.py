@@ -139,7 +139,7 @@ class ReadBin(ReadGen):
 
 
 
-class ReadLine(ReadGen):
+class ReadLines(ReadGen):
     ''' Returns utf8 encoded lines (with the trailing \n)
     '''
     def __init__(self, **kwargs):

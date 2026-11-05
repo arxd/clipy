@@ -164,7 +164,7 @@ def _open_fd_count():
 async def test_each_async_agrees_with_each(tmp_path):
     ''' The async path yields the same values in the same order as the sync path '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_QUIET, 'quiet')
-    assert([l async for l in cmd.each_async(stdout='line')] == list(cmd.each(stdout='line')))
+    assert([l async for l in cmd.each_async(stdout='lines')] == list(cmd.each(stdout='lines')))
 
 
 @pytest.mark.asyncio
@@ -174,7 +174,7 @@ async def test_values_arrive_incrementally(tmp_path):
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_PACED, 'paced')
     arrivals = []
-    async for line in cmd.each_async(stdout='line'):
+    async for line in cmd.each_async(stdout='lines'):
         arrivals.append(time.monotonic())
     assert(len(arrivals) == 3)
     assert(arrivals[-1] - arrivals[0] > 0.1) # Batched delivery would make this ~0
@@ -184,16 +184,16 @@ async def test_values_arrive_incrementally(tmp_path):
 async def test_a_value_wider_than_the_pipe_is_reassembled(tmp_path):
     ''' A record larger than the pipe buffer arrives over many reads and is put back together '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_BIG, 'big')
-    assert([l async for l in cmd.each_async(stdout='line')] == ['x'*100_000 + '\n'])
+    assert([l async for l in cmd.each_async(stdout='lines')] == ['x'*100_000 + '\n'])
 
 
 @pytest.mark.asyncio
 async def test_exhaustion_closes_everything(tmp_path):
     ''' Running the iterator dry reaps the child and closes our fds '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_QUIET, 'quiet')
-    assert([l.rstrip('\n') async for l in cmd.each_async(stdout='line')] == ['line 0','line 1','line 2'])
+    assert([l.rstrip('\n') async for l in cmd.each_async(stdout='lines')] == ['line 0','line 1','line 2'])
     before = _open_fd_count()
-    assert([l.rstrip('\n') async for l in cmd.each_async(stdout='line')] == ['line 0','line 1','line 2'])
+    assert([l.rstrip('\n') async for l in cmd.each_async(stdout='lines')] == ['line 0','line 1','line 2'])
     assert(_open_fd_count() == before)
 
 
@@ -201,12 +201,12 @@ async def test_exhaustion_closes_everything(tmp_path):
 async def test_break_closes_our_fds(tmp_path):
     ''' Abandoning the iterator must not leak the read end of the pipe we handed the child '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
-    agen = cmd.each_async(stdout='line')
+    agen = cmd.each_async(stdout='lines')
     async for line in agen: break
     await agen.aclose()
     before = _open_fd_count()
     for _ in range(3):
-        agen = cmd.each_async(stdout='line')
+        agen = cmd.each_async(stdout='lines')
         async for line in agen: break
         await agen.aclose()
     assert(_open_fd_count() == before)
@@ -223,7 +223,7 @@ async def test_break_then_aclose_cleans_up_immediately(tmp_path):
     AsyncIterator to pass the close along rather than just being abandoned.
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
-    agen = cmd.each_async(stdout='line', kill=signal.SIGINT)
+    agen = cmd.each_async(stdout='lines', kill=signal.SIGINT)
     async for line in agen:
         assert(line == 'line 0\n')
         break
@@ -240,7 +240,7 @@ async def test_aclose_does_not_deadlock_on_a_chatty_child(tmp_path):
     would free us but give its cleanup print an EPIPE, and the marker would never be written.
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_CHATTY, 'chatty')
-    agen = cmd.each_async(stdout='line', kill=signal.SIGINT)
+    agen = cmd.each_async(stdout='lines', kill=signal.SIGINT)
     async for line in agen:
         assert(line == 'ready\n')
         break
@@ -261,7 +261,7 @@ async def test_break_without_aclose_cleans_up_once_the_loop_runs_on(tmp_path):
     while the loop keeps running.
     '''
     cmd, marker, pidfile = _child(tmp_path, CHILD_MARKER)
-    async for line in cmd.each_async(stdout='line', kill=signal.SIGINT):
+    async for line in cmd.each_async(stdout='lines', kill=signal.SIGINT):
         break
     child = int(pidfile.read_text())
     assert(await _wait_gone(child))
@@ -300,7 +300,7 @@ sys.path.insert(0, {str(project_root)!r})
 from libclipy.core.command.cmd import Cmd
 
 async def main():
-    async for line in Cmd(sys.executable, {str(child_py)!r}, {str(marker)!r}, {str(pidfile)!r}).each_async(stdout='line', kill=signal.SIGINT):
+    async for line in Cmd(sys.executable, {str(child_py)!r}, {str(marker)!r}, {str(pidfile)!r}).each_async(stdout='lines', kill=signal.SIGINT):
         break # Abandoned: no aclose(), no close of any kind
 {runner}
 ''', name)
@@ -373,6 +373,6 @@ async def test_a_failing_child_is_reported(tmp_path):
     from ..errors import CmdError
     cmd, marker, pidfile = _child(tmp_path, CHILD_FAILS, 'fails')
     with pytest.raises(CmdError):
-        list(cmd.each(stdout='line', kill=signal.SIGINT))
+        list(cmd.each(stdout='lines', kill=signal.SIGINT))
     with pytest.raises(CmdError):
-        [l async for l in cmd.each_async(stdout='line', kill=signal.SIGINT)]
+        [l async for l in cmd.each_async(stdout='lines', kill=signal.SIGINT)]

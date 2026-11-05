@@ -1,7 +1,7 @@
 from pathlib import Path
 import tempfile
 from .sys_tool import SysTool
-from cli import ConfigVar
+from cli import ConfigVar, project_root
 
 
 class Rsync(SysTool):
@@ -78,7 +78,7 @@ class Rsync(SysTool):
                         f.write(f'+ {s}\n')
                 f.write('- *\n')
         # Run the sync
-            self(*self.args, *cmd, '--filter', f'. {tmp.name}', chdir + ('' if chdir.endswith('/') else '/'), f":{dest}", **kwargs).call()
+            self(*self.args, *cmd, '--filter', f'. {tmp.name}', str(project_root/chdir) + '/', f":{dest}", **kwargs).call()
 
 
     def merge(self, *args, **kwargs):

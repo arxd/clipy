@@ -14,7 +14,7 @@ class SetupJournal():
     def __init__(self):
         self.path = Path('/opt/app/setup_journal.json')
         try:
-            self.info = json.loads(self.path.read_text())
+            self.info = json.loads(self.path.read_text(encoding='utf8'))
         except FileNotFoundError:
             self.info = {'version':SetupJournal.version, 'runs':[]}
         if self.info['version'] != SetupJournal.version:

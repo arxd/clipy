@@ -1,6 +1,6 @@
 import json, os, base64, hashlib
 from .sys_tool import SysTool
-from cli import ConfigVar
+from cli import ConfigVar, project_root
 from libclipy.core.pretty import CLR
 from libclipy.core.command.cmd import Cmd
 
@@ -43,8 +43,8 @@ class Docker(SysTool):
 
     def _json_list(self, key, *args):
         all = {}
-        for line in self(*args).call('utf8').split('\n'):
-            if not line: continue
+        for line in self(*args).call('lines'):
+            if not line.strip(): continue
             line = json.loads(line)
             all[key.format(**line)] = line
         return all
@@ -87,7 +87,7 @@ class Docker(SysTool):
         if image: return img
     # Build it
         name_tag = f'{name}:{tag}'            
-        cmd = ['build', '-f-', root]
+        cmd = ['build', '-f-', (project_root/root).resolve()]
         cmd += [x for k,v in secrets.items() for x in ('--secret', f'id={k},src={v}')]
         cmd += [x for k,v in build_args.items() for x in ('--build-arg', f"{k}={v}")]
         cmd += ['-t', name_tag]

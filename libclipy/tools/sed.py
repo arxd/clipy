@@ -1,3 +1,4 @@
+from pathlib import Path
 from cli import ConfigVar
 from .sys_tool import SysTool
 
@@ -10,5 +11,4 @@ class Sed(SysTool):
 
     def sub(self, path, *patterns):
         patterns = [item for p in patterns for item in ('-e', p)]
-        out = self(*patterns, path).call('utf8')
-        with open(path, 'w', encoding='utf8') as f: f.write(out)
+        Path(path).write_text(self(*patterns, path).call('utf8'), encoding='utf8')

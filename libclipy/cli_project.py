@@ -1,7 +1,8 @@
-from cli import Command, version, Cmd
-from libclipy.core.pretty import CLR, print as pprint
-from .project import Project
+from pathlib import Path
+from cli import Command, version, Cmd, project_root
+from libclipy.core.pretty import CLR, print as cli_print
 from libclipy.tools.diff import Diff
+from .project import Project
 
 
 @Command()
@@ -54,28 +55,13 @@ def diff(project_name='', verbose__v=False):
     '''
     diff = Diff()
     clipy = Project()
-    if project_name:
-        proj = Project.lookup(project_name)
-        for f, d in proj.diff().items():
-            if d.status == 'd':
-                print(f" d {CLR.bld}{d.path}{CLR.x} {CLR.r}deprecated{CLR.x}")
-                continue
-            x = diff.compare(proj.file(f), clipy.file(f), path=f)
-            if int(verbose__v) < 2 and x.status == 'same': continue
-            if not verbose__v and not d.status: continue
-            print(f"{d.status:>2} ")
-            pprint.pretty(x)
-        print(f"\n{CLR.o} version {CLR.x}: {proj.info.get('version')}")
-        print(f"{CLR.o}features {CLR.x}: {proj.info.get('features')}")
-        print(f"{CLR.o}    path {CLR.x}: {proj}")
-        print(proj.description())
-    else:
+    if project_name == 'all':
         for proj in Project.all():
             kinds = {}
             try:
                 clean = (proj.info['version'] == version)
             except FileNotFoundError:
-                print(f"{CLR.r}Project {proj} can't be found{CLR.x}")
+                print(f"{CLR.r}{proj} {CLR.lr} Project can't be found{CLR.x}\n")
                 continue
             for f,d in proj.diff().items():
                 clean = clean and not d.status
@@ -85,22 +71,36 @@ def diff(project_name='', verbose__v=False):
             kinds = [f'{k}:{v}' for k,v in kinds.items() if k not in ('', 'same')]
             print(f"{CLR.bld if clean else CLR.r}{proj} {CLR.y}{proj.info.get('version')} {CLR.c}{' '.join(kinds)} {CLR.m}{' '.join(proj.info['features'])}{CLR.x}")
             print(CLR.a, proj.description(), CLR.x)
-
-
+    else:
+        proj = Project.lookup(project_name or Path('.'))
+        for f, d in proj.diff().items():
+            if d.status == 'd':
+                print(f" d {CLR.bld}{d.path}{CLR.x} {CLR.r}deprecated{CLR.x}")
+                continue
+            x = diff.compare(proj.file(f), clipy.file(f), path=f)
+            if int(verbose__v) < 2 and x.status == 'same': continue
+            if not verbose__v and not d.status: continue
+            print(f"{d.status:>2} ")
+            cli_print.pretty(x)
+        print(f"\n{CLR.o} version {CLR.x}: {proj.info.get('version')}")
+        print(f"{CLR.o}features {CLR.x}: {proj.info.get('features')}")
+        print(f"{CLR.o}    path {CLR.x}: {proj}")
+        print(proj.description())
+        
 
 @Command()
-def features(project_name='', *, add__a=[], rem__x=[]):
+def features(project_name=None, *, add__a=[], rem__x=[]):
     ''' Add or remove features from a project.
 
     Parameters:
-        <project>
+        <project> | defaults to current working directory
             The path or name of the project to edit
         --add -a <feature>*
             Add a feature to the project
         --rem -x <feature>*
             Remove a feature from the project
     '''
-    proj = Project.lookup(project_name)
+    proj = Project.lookup(project_name or Path('.'))
     before = set(proj.info['features'])
     after = (before | set(add__a)) - set(rem__x)
     print(proj.info['features'], '->', 'No change' if before == after else after)
@@ -111,11 +111,11 @@ def features(project_name='', *, add__a=[], rem__x=[]):
 
 
 @Command()
-def sync(project_name='', *, force__f=False, reverse__r=False):
+def sync(project_name=None, *, force__f=False, reverse__r=False):
     ''' Synchronize a project with the clipy reference.
     
     Parameters:
-        <project>
+        <project> | defaults to the current working directory
             The path or name of the project to sync.
         --reverse -r
             We want to move changes from the project to clipy.
@@ -127,7 +127,7 @@ def sync(project_name='', *, force__f=False, reverse__r=False):
     '''
     diff = Diff()
     clipy = Project()
-    proj = Project.lookup(project_name)
+    proj = Project.lookup(project_name or Path('.'))
     if force__f: proj.sync_hashes = {}
     diffed = proj.diff()
     for f, d in diffed.items():
@@ -157,7 +157,7 @@ def sync(project_name='', *, force__f=False, reverse__r=False):
         # Did only the project's file change?
         if d.status == 'p' and not reverse__r: continue
     # Resolve a changed file
-        pprint.pretty(x)
+        cli_print.pretty(x)
         print(f"Status: {d.status:>2}")
         if (p:=input("[e]dit / [c]opy / keep: ")) == 'c':
             clipy.copy_to(f, proj)

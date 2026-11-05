@@ -1,6 +1,6 @@
 import os, sys, subprocess, signal
 from pathlib import Path
-from .channels import ReadLine, Write, ReadBin, Read, Channel, ReadPickle, Mem, _NULL
+from .channels import ReadLines, Write, ReadBin, Read, Channel, ReadPickle, Mem, _NULL
 from ..errors import CmdError
 
 class Exec():
@@ -21,7 +21,7 @@ class Exec():
 class _Conditions():
     ''' handle accumulation of conditions for a call() or call_async()
     '''
-    FMTS = ('', 'pass', 'null', 'utf8', 'bin', 'json')
+    FMTS = ('', 'pass', 'null', 'utf8', 'bin', 'json', 'lines', 'pickle')
     ACTIONS = ('', 'raise', 'code', 'value')
 
     @staticmethod
@@ -54,6 +54,7 @@ class _Conditions():
 
     def return_value(self, cmd, returncode, output):
         keep = []
+    # Turn the data collected by 'buf' and format it how the user requested
         def _fmt(src, fmt):
             if output[src] is None: return
             if fmt in ('','pass'): getattr(sys, src).buffer.write(output[src])
@@ -63,6 +64,12 @@ class _Conditions():
             elif fmt == 'json':
                 import json
                 keep.append(json.loads(output[src].decode('utf8')))
+            else:
+                parser = {'lines':ReadLines, 'pickle':ReadPickle}[fmt](buffer=output[src], done=True, b1=len(output[src]))
+                vs = []
+                while (v:=parser.parse()) != _NULL: vs.append(v)
+                keep.append(vs)
+                
     # Execute the action
         def _do(stdout, stderr, action, value):
             _fmt('stdout', stdout)
@@ -72,11 +79,12 @@ class _Conditions():
             v = None if not keep else keep[0] if len(keep) == 1 else keep
             if action == 'raise': raise CmdError(keep=v, cmd=cmd, returncode=returncode, **output, **({'msg':value} if value is not None else {}))
             return v
+    
     # Find the first matching condition
         for condition, code, value in self.conditions:
             if isinstance(condition, int):
                 if condition == returncode: return _do(*code, value)
-            elif isinstance(condition, (list, tuple)):
+            elif isinstance(condition, (set, list, tuple)):
                 if returncode in condition: return _do(*code, value)
             elif condition(returncode): return _do(*code, value)
 
@@ -181,7 +189,7 @@ class Cmd():
 
             * ``None`` | '' | 'pass' -> None : Output is not captured
             * 'null' -> subprocess.DEVNULL : Capture and drop output.
-            * 'line' -> subprocess.PIPE : Capture output and yield utf8 encoded lines (with included trailing newline)
+            * 'lines' -> subprocess.PIPE : Capture output and yield utf8 encoded lines (with included trailing newline)
             * 'bin' -> subprocess.PIPE : Capture output and yield chunks of binary data
             * 'buf' -> subprocess.PIPE : Capture output into buffer but don't yield anything
             * 'pickle' -> pipe : Capture output and yield a sequence of unpickled objects
@@ -209,7 +217,7 @@ class Cmd():
                     chan.send(None)
             if src != 'stdin' and chan.child_fd is subprocess.PIPE:
                 p = os.pipe()
-                chan = {'line':ReadLine, 'bin':ReadBin, 'pickle':ReadPickle, 'buf':Read}[kind](src=src, fd=p[0], child_fd=p[1])
+                chan = {'lines':ReadLines, 'bin':ReadBin, 'pickle':ReadPickle, 'buf':Read}[kind](src=src, fd=p[0], child_fd=p[1])
             return chan
         return {
             'stdout': _build('stdout', stdout),
@@ -233,6 +241,11 @@ class Cmd():
 
     def on(self, condition, fmt='', value=None):
         ''' If the given condition matches the command's return value then the `fmt` rule will be applied.  See: call()
+        The condition may be one of the following:
+
+        * int : Equals the returncode
+        * list, tuple, set : Contains the returncode
+        * callable : A callable taking the returncode as a parameter and returning a truthy value
         '''
         if self._conditions is None: self._conditions = _Conditions()
         self._conditions.parse(condition, fmt, value)
@@ -324,13 +337,13 @@ class Cmd():
     # FIXME Move this to a better location
     @classmethod
     def entry_point(self, venv_path, *, pipe=False, **cmd_info):
-        from libclipy.core.config import ConfigVar, out_fd
+        from libclipy.core.config import ConfigVar, output
         from .channels import ReadPickle
         from cli import project_root
         if pipe:
             p = os.pipe()
             cmd = ReadPickle(src='cmd', fd=p[0], child_fd=p[1])
-            out_fd.for_child(cmd.child_fd)
+            output.for_child(cmd.child_fd)
         mm = Mem(src='mm', data=({var.src_path:var.export() for var in ConfigVar.preserved}, cmd_info))
         each_args = {} if not pipe else dict(cmd=cmd, mm=mm)
-        return Cmd(venv_path, '-I', 'libclipy/core/entry_point.py', mm.size, mm.child_fd, project_root), each_args
+        return Cmd(venv_path, '-I', project_root/'libclipy'/'core'/'entry_point.py', mm.size, mm.child_fd, project_root), each_args

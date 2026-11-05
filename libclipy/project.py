@@ -3,16 +3,15 @@ from pathlib import Path
 from config import local_root
 from collections import namedtuple
 from libclipy.tools.git import Git
-from cli import UsageError
+from cli import UsageError, Venv
 from libclipy.core.pretty import CLR
 
 DFile = namedtuple('DFile', ('path', 'status', 'ref_hash', 'proj_hash', 'proj_hash_cached'))
 
 class Project():
-    info_file = 'libclipy/core/info.json'
 
-    def __init__(self, path='.', sync_hashes=None):
-        self.git = Git(repo=Path(path).resolve())
+    def __init__(self, path=None, sync_hashes=None):
+        self.git = Git(repo=path and Path(path).expanduser())
         self.sync_hashes = sync_hashes or {}
 
     def __str__(self):
@@ -21,6 +20,10 @@ class Project():
     def __eq__(self, other):
         return str(self) == str(other)
 
+    @property
+    def info_path(self):
+        return self.file('libclipy/core/info.json')
+
     @classmethod
     def all(self):
         yield from Projects().all.values()
@@ -28,22 +31,19 @@ class Project():
     @classmethod
     def lookup(self, name):
         return Projects()[name]
-    
 
     @property
     def info(self):
         ''' Read the info metadata from the top comment of cli.py
         '''
         if not hasattr(self, '_info'):
-            with open(self.file(Project.info_file), 'r', encoding='utf8') as f:
-                self._info = json.load(f)
+            self._info = json.loads(self.info_path.read_text(encoding='utf8'))
         return self._info
     
 
     def set_info(self, **kwargs):
         self.info.update(kwargs)
-        with open(self.file(Project.info_file), 'w', encoding='utf8') as f:
-            json.dump(self._info, f, ensure_ascii=False, indent=2)
+        self.info_path.write_text(json.dumps(self._info, ensure_ascii=False, indent=2), encoding='utf8')
 
     
     def copy_to(self, path, proj):
@@ -56,7 +56,7 @@ class Project():
 
     def _feature_files(self, feature, all_features):
         ''' Yields files (relative paths) needed for the given feature.
-        This only works when Project('.') is the clipy repository.
+        This only works when Project() is the clipy repository.
         '''
         clipy = Project()
         if feature == 'core':
@@ -82,7 +82,7 @@ class Project():
             yield f'libclipy/{feature[4:]}.py'
         elif feature.startswith('cli.'):
             yield f'libclipy/cli_{feature[4:]}.py'
-        elif not Path(f'libclipy/tools/{feature}.py').exists():
+        elif not clipy.file(f'libclipy/tools/{feature}.py').exists():
             raise ValueError(f"Unknown Feature: {feature}")
         else:
             yield f'libclipy/tools/{feature}.py'
@@ -169,7 +169,7 @@ class Projects():
     def __getitem__(self, name):
     # If it is a pathname make it a full path.
         if isinstance(name, Path) or Path(name).exists():
-            name = str(Path(name).resolve())
+            name = str(Path(name).expanduser().resolve())
     # Is name just the project name?
         match = [p for p in self.all if p.endswith('/'*(name[0]!='/') + name)]
         if len(match) == 1: return self.all[match[0]]

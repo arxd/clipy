@@ -18,7 +18,6 @@ class PrettyException(Exception):
         return s+ ', '.join(args) + ')'
     
     def __pretty__(self, p):
-        if not hasattr(self, 'msg'): return
         p(str(self))
         p.pretty({k:v for k,v in self.__dict__.items() if k != 'msg'})
 
@@ -59,10 +58,9 @@ class MissingTool(UsageError):
 
 
 class CommandError(PrettyException):
-
     def __pretty__(self, p):
         super().__pretty__(p)
-        p(p.ERR, "Run with -h or --help for additional documentation for this command.")
+        p(p.ERR + "Run with -h or --help for additional documentation for this command.")
 
 
 
@@ -77,9 +75,7 @@ class BindError(CommandError):
 
 
 class InvalidCommandName(InvalidCommandSpec):
-    def __str__(self):
-        return self.msg
-
+    pass
 
 
 class DuplicateArgumentAlias(InvalidCommandSpec):

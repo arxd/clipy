@@ -40,7 +40,7 @@ def test_stdin_no_write_after_done():
 def test_stdin():
     ''' Simple write to stdin works correctly
     '''
-    lines = [x for x in Cmd('cat').iter_sync(stdout='line', stdin='the quick\nbrown\nfox jumped over\nthe lazy dog')]
+    lines = [x for x in Cmd('cat').iter_sync(stdout='lines', stdin='the quick\nbrown\nfox jumped over\nthe lazy dog')]
     assert(lines == ['the quick\n', 'brown\n', 'fox jumped over\n', 'the lazy dog'])
     assert([x for x in Cmd('cat').iter_sync(stdout='bin', stdin=b'1234')] == [b'1234'])
 

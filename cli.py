@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-import sys, os, pathlib
+import sys
+from pathlib import Path
 
 # Program constants
 name = 'clipy'
-version = '1.2.2'
+version = '1.3.1'
 env_prefix = 'CLIPY_'
+project_root = Path(sys.modules['cli' if 'cli' in sys.modules else '__main__'].__file__).resolve().parent
 
-# Move to the project root and add the project root to sys.path
-project_root = pathlib.Path(sys.modules['cli' if 'cli' in sys.modules else '__main__'].__file__).resolve().parent
 if __name__ == '__main__':
     sys.path.insert(0, str(project_root))
-    os.chdir(project_root)
     # system and local_root are needed early for Venv selection and initalization, and must be passed down to sub-commands
     from libclipy.core.config import set_env_vars
     set_env_vars(env_prefix)
@@ -38,21 +37,16 @@ def main(*, _sub_cmd, version=False, target__t=None, verbose__v=False, quiet__q=
             How should objects returned from commands be formatted for stdout?
     '''
     import config
-    from libclipy.core.config import format_out
-# target
+    from libclipy.core.config import output
     if target__t is not None: config.target.v = target__t
-# verbosity
     if verbose__v or quiet__q: config.verbosity.v = int(verbose__v) - int(quiet__q)
-# output format
-    if format__f is not None: format_out.v = format__f
-    format_kinds = {'pretty', 'json', 'pickle'}
-    if format_out.v not in format_kinds: raise UsageError('Invalid format: "%s" is not one of [ %s ]'%(format_out.v, ' | '.join(format_kinds)))
+    if format__f is not None: output.v = format__f
 # Run the sub command
     if _sub_cmd is not None: return _sub_cmd.exec()
 # No sub command
     if version:
         from cli import version, name
-        return dict(name=name, version=version)
+        return print(f"{name} {version}")
     from libclipy.core.errors import HelpWanted
     raise HelpWanted(cmd=main())
 

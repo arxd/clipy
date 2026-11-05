@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 from pathlib import Path
-from cli import UsageError, ConfigVar, Cmd
+from cli import UsageError, ConfigVar, Cmd, project_root
 from .sys_tool import SysTool
 
 
@@ -17,8 +17,8 @@ class Git(SysTool):
     cmd = ConfigVar('Git.cmd The path to the git executable', default='git')
     version = ConfigVar('Git.version The desired config version for git', default='2')
 
-    def __init__(self, repo='.'):
-        self.repo = Path(repo).resolve()
+    def __init__(self, repo=None):
+        self.repo = project_root if repo is None else Path(repo).expanduser().resolve()
 
     def __str__(self):
         return str(self.repo)
@@ -38,7 +38,7 @@ class Git(SysTool):
         if changes or changes_only: return changes
         if self.fetch('--dry-run').call('utf8').strip():
             return [('  ','Need to pull')]
-        if self('status', '-sb').call('utf8').splitlines()[0].split('[')[-1].startswith('ahead'):
+        if self('status', '-sb').call('lines')[0].split('[')[-1].startswith('ahead'):
             return [('  ','Need to push')] 
         return []
 
@@ -93,7 +93,7 @@ class Git(SysTool):
 
 
     def ls(self, *pattern, invert=False):
-        return [Path(f) for f in self.ls_files(*pattern, *['--other']*invert).call('utf8').splitlines()]
+        return [Path(f.strip()) for f in self.ls_files(*pattern, *['--other']*invert).call('lines')]
 
 
     def grep(self, pattern, *args):
