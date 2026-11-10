@@ -1,7 +1,7 @@
 from pathlib import Path
 import tempfile
 from .sys_tool import SysTool
-from cli import ConfigVar, project_root
+from cli import ConfigVar
 
 
 class Rsync(SysTool):
@@ -14,13 +14,15 @@ class Rsync(SysTool):
     '''    
     version_probe = r'^rsync\s+version\s+(?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+)'
     cmd = ConfigVar('Rsync.cmd The path to the rsync executable', default='rsync')
-    version = ConfigVar('Rsync.version The desired config version for rsync', default='3')
+    version = ConfigVar('Rsync.version The desired config version for rsync', default='3.2.3')
 
 
-    def __init__(self, remote=None, args=None, links=True, i=None, host_check=False):
+    def __init__(self, remote=None, args=None, links=True, i=None, host_check=False, chdir=None):
         ''' Create an rsync command object
 
         Parameters:
+            chdir
+                Execute the rsync as if from this directory
             remote
                 user@hostname[:port]
             links
@@ -30,6 +32,7 @@ class Rsync(SysTool):
             host_check | False
                 use StrictHostKeyChecking and UserKnownHostsFile
         '''
+        self.chdir = chdir or Path('.')
         self.args = ['-vz', '-rtp', '-l' if links else '-L']
         if args: self.args += args
         remote = remote.rsplit(':',1)
@@ -40,7 +43,7 @@ class Rsync(SysTool):
         self.args += ['-e', f'{ssh} {remote[0]}']
 
 
-    def sync(self, dest, *src, chown=None, delete=True, chdir='.', dry=False, **kwargs):
+    def sync(self, dest, *src, chown=None, delete=True, dry=False, **kwargs):
         ''' Sync the files to the destination.
 
         Note that files cannot be renamed because the destination `dest` is always a folder (so you cannot specify a destination filename)
@@ -78,7 +81,7 @@ class Rsync(SysTool):
                         f.write(f'+ {s}\n')
                 f.write('- *\n')
         # Run the sync
-            self(*self.args, *cmd, '--filter', f'. {tmp.name}', str(project_root/chdir) + '/', f":{dest}", **kwargs).call()
+            self(*self.args, *cmd, '--filter', f'. {tmp.name}', str(self.chdir) + '/', f":{dest}", **kwargs).call()
 
 
     def merge(self, *args, **kwargs):
@@ -108,5 +111,5 @@ class Rsync(SysTool):
                 Copies all files in the current directory to /home/user/remote_dir/...
             
         '''
-        _resolve = lambda p: p if p[0] == ':' else (str(Path(p).expanduser().resolve()) + '/'*p.endswith('/'))
-        return self(*self.args, _resolve(src), _resolve(dest), **kwargs)
+        _resolve = lambda p: p if p[0] == ':' else (str((self.chdir/Path(p).expanduser()).resolve()) + '/'*p.endswith('/'))
+        return self(*self.args, '--mkpath', _resolve(str(src)), _resolve(str(dest)), **kwargs)

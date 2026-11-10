@@ -166,6 +166,7 @@ class ConfigVar():
             if ConfigVar.preserve: type(self).preserved.add(self)
             return self.cvar.set(self.cast(value))
 
+
     @property
     def default(self):
         return self._default
@@ -175,9 +176,11 @@ class ConfigVar():
         self._default = self.cast(value)
         return self._default
 
+
     def for_child(self, value): # FIXME This is a kludge used only for out_fd, there must be a cleaner way
         self.v_child = value
         type(self).preserved.add(self)
+
 
     def export(self):
         try:
@@ -276,8 +279,6 @@ class Output(ConfigVar):
 
 
 output = Output("output How should we format the command's output?", default='pretty', cast=Output.cast)
-    
-
 verbosity = ConfigVar("verbosity Bump the verbosity positive or negative", default=0, cast=int)
 system = ConfigVar('system The system environment where we are running cli.py', default='dev')
 

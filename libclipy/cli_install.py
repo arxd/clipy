@@ -12,5 +12,5 @@ def install(remote=None):
     '''
     from libclipy.tools.git import Git
     from libclipy.tools.rsync import Rsync
-    from cli import name
-    Rsync(remote=remote or default_install_remote.v).sync(name, *Git().ls())
+    from cli import name, project_root
+    Rsync(remote=remote or default_install_remote.v, chdir=project_root).sync(name, *Git().ls())

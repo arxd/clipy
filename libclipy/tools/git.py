@@ -12,7 +12,7 @@ GitRef = namedtuple('GitRef', ('name', 'short', 'type', 'size', 'hash', 'kind', 
 
 
 class Git(SysTool):
-    sub_commands = ['config', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
+    sub_commands = ['config', 'branch', 'fetch', 'symbolic_ref', 'rev_parse', 'for_each_ref', 'ls_files', 'pull', 'commit', 'add', 'rm', 'checkout', 'push', 'worktree']
     version_probe = r'^git version (?P<v0>\d+)\.(?P<v1>\d+)\.(?P<v2>\d+).*$'
     cmd = ConfigVar('Git.cmd The path to the git executable', default='git')
     version = ConfigVar('Git.version The desired config version for git', default='2')
@@ -92,8 +92,12 @@ class Git(SysTool):
         return not bool(self.status())
 
 
-    def ls(self, *pattern, invert=False):
-        return [Path(f.strip()) for f in self.ls_files(*pattern, *['--other']*invert).call('lines')]
+    def path(self, p):
+        return self.repo / p
+
+
+    def ls(self, *pattern, invert=False, relative=True):
+        return [(Path if relative else self.path)(f.strip()) for f in self.ls_files(*pattern, *['--other']*invert).call('lines')]
 
 
     def grep(self, pattern, *args):
@@ -110,23 +114,21 @@ class Git(SysTool):
 
 
     def is_worktree_dirty(self):
-        for status, path in self.status():
-            if status != '??': return True
+        for status, _ in self.status():
+            if status not in ('  ', '??'): return True
 
 
-    def create_orphan_branch(self, name, gitignore=[], remote='origin'):
+    def create_orphan_branch(self, name, gitignore=[]):
         cur = self.head_sym(short=True)
         if not cur: raise UsageError(f"Head is detached")
         if self.is_worktree_dirty():
             raise UsageError(f'Git worktree is not clean.  Commit changes and try again.')
         self.checkout('--orphan', name).say().call()
-        self.rm('-rf', '.').say().call()
-        Path('.gitignore').write_text('\n'.join(gitignore))
-        self.add('.gitignore')
+        self('read-tree', '--empty').say().call()
+        self.path('.gitignore').write_text('\n'.join(gitignore)+'\n')
+        self.add('.gitignore').say().call()
         self.commit('-m', f'{name} orphan branch').say().call()
-        #self.push('-u', remote, name)
         self.checkout(cur).say().call()
-        return f'{remote}/{name}'
 
     
     def __call__(self, *args, **kwargs):

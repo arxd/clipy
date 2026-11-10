@@ -106,7 +106,7 @@ def ensure_docs():
     except:
         print(f"Creating docs branch")
         gitignore = '* !/html/ !/html/** !/markdown/ !/markdown/** !.gitignore'.split(' ')
-        repo.create_orphan_branch('docs', gitignore, remote='origin').say().call()
+        repo.create_orphan_branch('docs', gitignore)
         repo.worktree('add', dist, 'docs').say().call()
     
 

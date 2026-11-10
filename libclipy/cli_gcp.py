@@ -19,11 +19,21 @@ def call(*args):
 
 
 @Command()
-def instance(cmd, name, *args):
+def instance(cmd, name, *args, disk=False):
     ''' Call gcloud compute instances [start | stop | describe | suspend | resume | ...]
+
+    Parameters:
+        cmd
+            One of: start | stop | delete
+        name
+            The instance name
+        --disk
+            Also delete the disk.
     '''
     gcloud = GCloud(project_id=True)
-    return gcloud.compute('instances', cmd, name, '--zone', gcloud.instance_to_zone(name), *args).exec()
+    gcloud.compute('instances', cmd, name, '--zone', gcloud.instance_to_zone(name), *args).say().call()
+    if cmd == 'delete' and disk:
+        gcloud.compute('disks', 'delete', name, '--zone', gcloud.instance_to_zone(name), '--quiet').say().call()
 
 
 
@@ -47,7 +57,8 @@ def spawn(name, *, machine__m='e2-micro', image__i='debian-cloud/debian-13', zon
     if len(img:=image__i.split('/')) == 2:
         image = {'image':gcloud.compute('images', 'describe-from-family', img[1], *('--project', img[0])*bool(img[0]), json=True).call()['selfLink']}
     else:
-        image = {'source_machine_image':gcloud.compute('machine-images', 'describe', img[0], json=True).call()['selfLink']}
+        image = {'image_family':img[0], 'image_project':gcloud.project_id}
+        #image = {'source_machine_image':gcloud.compute('machine-images', 'describe', img[0], json=True).call()['selfLink']}
     if zone__z is None: zone__z = gcloud.zone
     subnet = zone__z.rsplit('-',1)[0]
     print(f'Creating {CLR.c}{name}.{zone__z}.c.{gcloud.project_id}.internal{CLR.x} in subnet {subnet!r}')    
@@ -292,7 +303,7 @@ def setup(name=None, *, system='cloud', port__p=0, target__t='prod', deploy=Fals
     '''
     from libclipy.tools.git import Git
     from libclipy.core.errors import CmdError
-    from cli import env_prefix
+    from cli import env_prefix, project_root
     gcloud = GCloud(project_id=True)
     while True: # We need to logout and log back in after adding the `app` group
         with gcloud.ssh(vm_name=name, port=port__p) as ssh:
@@ -324,7 +335,7 @@ def setup(name=None, *, system='cloud', port__p=0, target__t='prod', deploy=Fals
                 ssh.cmd('curl -LsSf https://astral.sh/uv/install.sh | sudo UV_INSTALL_DIR="/usr/local/bin" INSTALLER_NO_MODIFY_PATH=1 sh').say().call()
                 ssh.cmd('sudo mv /usr/local/bin/uv /usr/local/bin/_uv').say().call()
                 _write_file(ssh, '/usr/local/bin/uv', '#!/bin/sh', 'export UV_TOOL_DIR="/var/opt/uv/tools"', 'export UV_PYTHON_INSTALL_DIR="/var/opt/uv/python"', 'exec /usr/local/bin/_uv "$@"', chmod='755')
-            ssh.iap.rsync().sync('app', '!local/***', *Git().ls())
+            ssh.iap.rsync(chdir=project_root).sync('app', '!local/***', *Git().ls())
             ssh.cmd(f'app/cli.py -t {target__t} setup --stop {stop} --start {-2 if deploy else start} --git-commit {Git().head_commit()}').env(PYTHONUNBUFFERED=1, **{f'{env_prefix}SYSTEM': system}).say().call(pty=True)
         break
 

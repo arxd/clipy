@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Program constants
 name = 'clipy'
-version = '1.3.1'
+version = '1.3.2'
 env_prefix = 'CLIPY_'
 project_root = Path(sys.modules['cli' if 'cli' in sys.modules else '__main__'].__file__).resolve().parent
 
